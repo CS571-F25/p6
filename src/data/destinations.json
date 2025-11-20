@@ -1,0 +1,48 @@
+[
+    {
+      "name": "Paris",
+      "country": "France",
+      "distanceFromMadison": {
+        "miles": 4190,
+        "travelTime": "8 hours (nonstop flight)"
+      },
+      "description": "Paris is a global center for art, culture, food, and history. Known for its romantic charm, iconic architecture, and world-class museums, Paris offers a blend of historic beauty and modern life along the Seine.",
+      "activities": [
+        "Visit the Eiffel Tower",
+        "Explore the Louvre Museum",
+        "Walk through Montmartre & Sacré-Cœur"
+      ],
+      "image": "images/Paris.jpg"
+    },
+    {
+      "name": "Los Angeles",
+      "country": "United States",
+      "distanceFromMadison": {
+        "miles": 2015,
+        "travelTime": "4 hours (nonstop flight)"
+      },
+      "description": "Los Angeles is a sprawling coastal city known for entertainment, beaches, diverse food, and creative culture. From Hollywood to Santa Monica, LA mixes urban excitement with relaxed Southern California vibes.",
+      "activities": [
+        "Walk along Santa Monica Pier",
+        "Visit the Griffith Observatory",
+        "Explore Hollywood Boulevard"
+      ],
+      "image": "images/LosAngeles.jpg"
+    },
+    {
+      "name": "New York City",
+      "country": "United States",
+      "distanceFromMadison": {
+        "miles": 890,
+        "travelTime": "2 hours (nonstop flight)"
+      },
+      "description": "New York City is a fast-paced cultural capital known for skyscrapers, world-class shows, iconic parks, and unbeatable food. Each borough offers something unique, from Manhattan’s landmarks to Brooklyn’s creative neighborhoods.",
+      "activities": [
+        "See Times Square",
+        "Walk through Central Park",
+        "Visit the Metropolitan Museum of Art"
+      ],
+      "image": "images/NewYork.jpg"
+    }
+  ]
+  
