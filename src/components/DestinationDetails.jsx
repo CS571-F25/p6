@@ -31,6 +31,10 @@ export default function DestinationDetails() {
     activities 
   } = destination;
 
+  const handleAddToTrip = () => {
+    alert(`${cityName}, ${country} has been added to your trip!`);
+  };
+
   return (
     <Container className="mt-4">
       <Row>
@@ -52,7 +56,7 @@ export default function DestinationDetails() {
             ))}
           </ul>
 
-          <Button variant="success">
+          <Button variant="success" onClick={handleAddToTrip}>
             Add to Trip
           </Button>
         </Col>
