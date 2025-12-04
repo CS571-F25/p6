@@ -10,6 +10,8 @@ import DestinationDetails from "./components/DestinationDetails.jsx";
 import ItineraryBuilder from "./components/ItineraryBuilder";
 import TripLeg from "./components/TripLeg";
 import FinalSchedule from "./components/FinalSchedule.jsx";
+import destinations from "./data/destinations.json";
+
 
 function App() {
   return <HashRouter>
@@ -18,10 +20,13 @@ function App() {
       <Route path='/' element={<Home />}> </Route>
       <Route path='/about' element={<AboutMe />}></Route>
       <Route path='/destinations' element={<Destinations />}></Route>
-      <Route path="/destinations/:name" element={<DestinationDetails />} />
       <Route path="/builder" element={<ItineraryBuilder />} />
       <Route path="/builder/leg/:legName" element={<TripLeg />} />
       <Route path="/final-schedule" element={<FinalSchedule />} />
+      <Route
+        path="/destinations/:name"
+        element={<DestinationDetails destinations={destinations} />}
+      />
     </Routes>
   </HashRouter>
 }

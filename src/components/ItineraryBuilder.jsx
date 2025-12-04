@@ -7,19 +7,29 @@ export default function ItineraryBuilder() {
   const [notes, setNotes] = useState({});
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("tripLegs")) || [];
-setSavedDestinations(stored);
+    const storedLegs = JSON.parse(localStorage.getItem("tripLegs")) || [];
+    setSavedDestinations(storedLegs);
+  
+    const storedNotes = JSON.parse(localStorage.getItem("notes")) || {};
+    setNotes(storedNotes);
   }, []);
-
   const handleNoteChange = (name, text) => {
-    setNotes(prev => ({ ...prev, [name]: text }));
+    const updated = { ...notes, [name]: text };
+    setNotes(updated);
+    localStorage.setItem("notes", JSON.stringify(updated));
   };
+  
 
   const handleRemove = (name) => {
-    const updated = savedDestinations.filter(dest => dest.name !== name);
-    localStorage.setItem("savedDestinations", JSON.stringify(updated));
-    setSavedDestinations(updated);
+    // Remove from the correct store!
+    const legs = JSON.parse(localStorage.getItem("tripLegs")) || [];
+    const updatedLegs = legs.filter((l) => l.name !== name);
+    localStorage.setItem("tripLegs", JSON.stringify(updatedLegs));
+  
+    // Update UI list
+    setSavedDestinations(updatedLegs);
   };
+  
 
   return (
     <Container className="mt-4">

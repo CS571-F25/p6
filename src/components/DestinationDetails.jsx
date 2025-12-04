@@ -36,8 +36,10 @@ export default function DestinationDetails({ destinations }) {
         activities: destination.activities,
         plannedActivities: [],
         startDate: "",
-        endDate: ""
-      };
+        endDate: "",
+        image: destination.image,          // <-- REQUIRED FOR ITIN BUILDER
+        country: destination.country       // optional but useful
+      };      
       tripLegs.push(leg);
     }
 
@@ -59,15 +61,50 @@ export default function DestinationDetails({ destinations }) {
 
     alert(`Added "${activity.title}" to your itinerary`);
   };
-
+  const addWholeDestinationToTrip = () => {
+    const tripLegs = JSON.parse(localStorage.getItem("tripLegs")) || [];
+  
+    // Check if leg already exists
+    let leg = tripLegs.find((l) => l.name === destination.name);
+  
+    if (!leg) {
+      // Create a complete itinerary leg for the whole city
+      leg = {
+        name: destination.name,
+        description: destination.description,
+        activities: destination.activities,
+        plannedActivities: [],
+        startDate: "",
+        endDate: "",
+        image: destination.image,      // <-- ADD THIS
+        country: destination.country   // (optional but recommended)
+      };
+      
+  
+      tripLegs.push(leg);
+      localStorage.setItem("tripLegs", JSON.stringify(tripLegs));
+  
+      alert(`${destination.name} added to your itinerary.`);
+    } else {
+      alert(`${destination.name} is already in your itinerary.`);
+    }
+  };
+  
   return (
     <Container className="mt-4">
       <Button variant="secondary" onClick={() => navigate("/destinations")}>
         ← Back to Destinations
       </Button>
+      
 
       <h2 className="mt-3">{destination.name}</h2>
-
+      <Button
+        variant="success"
+        className="mt-3 mb-3"
+        onClick={addWholeDestinationToTrip}
+      >
+        ➕ Add Entire Destination to Itinerary
+      </Button>
       <p>{destination.description}</p>
 
       <hr />

@@ -48,6 +48,9 @@ export default function TripLeg() {
     const found = stored.find(
       (l) => l.name.toLowerCase().replace(/\s+/g, "-") === legName
     );
+    if (!found.activities) {
+        found.activities = [];
+    }
 
     if (!found) {
       navigate("/builder");
@@ -286,7 +289,7 @@ export default function TripLeg() {
             <Card.Body>
               <h4>Available Activities</h4>
 
-              {leg.activities.map((act, i) => {
+              {(leg.activities || []).map((act, i) => {
                 const recMin = parseTime(act.end) - parseTime(act.start);
                 const duration = Math.min(Math.max(recMin, 30), 240);
 
