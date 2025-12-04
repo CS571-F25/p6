@@ -1,17 +1,23 @@
 import { useParams, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
 import { Container, Row, Col, Card, Button, Form } from "react-bootstrap";
+import ActivityBlock from "../components/ActivityBlock";
 
 export default function TripLeg() {
   const { legName } = useParams();
   const navigate = useNavigate();
 
-  // ALL HOOKS MUST BE AT THE TOP – ALWAYS
+  // -------------------------------
+  // HOOKS
+  // -------------------------------
   const [leg, setLeg] = useState(null);
   const [schedule, setSchedule] = useState([]);
-  const [currentDay, setCurrentDay] = useState(1);  // ← MOVED UP
+  const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
+  const [allDates, setAllDates] = useState([]);
 
-  // Load leg
+  // -------------------------------
+  // LOAD LEG
+  // -------------------------------
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("tripLegs")) || [];
     const found = stored.find(
@@ -25,72 +31,129 @@ export default function TripLeg() {
 
     setLeg(found);
     setSchedule(found.plannedActivities || []);
-    setCurrentDay(1); // reset when switching legs
+
+    if (found.startDate && found.endDate) {
+      setAllDates(generateDateRange(found.startDate, found.endDate));
+    }
   }, [legName, navigate]);
 
-  // Helper: update leg metadata
-  const updateLeg = (updatedLeg) => {
-    const stored = JSON.parse(localStorage.getItem("tripLegs")) || [];
+  // -------------------------------
+  // DATE RANGE GENERATION (DST SAFE)
+  // -------------------------------
+  const generateDateRange = (start, end) => {
+    const dates = [];
+    let cur = new Date(start + "T00:00:00Z");
+    const endDate = new Date(end + "T00:00:00Z");
 
+    while (cur <= endDate) {
+      dates.push(new Date(cur));
+      cur.setUTCDate(cur.getUTCDate() + 1);
+    }
+
+    return dates;
+  };
+
+  // -------------------------------
+  // GROUP DATES INTO MON–SUN WEEKS
+  // -------------------------------
+  const groupDatesIntoWeeks = (dates) => {
+    const weeks = [];
+    let currentWeek = [];
+
+    dates.forEach((date) => {
+      if (currentWeek.length === 0) {
+        const dow = (date.getDay() + 6) % 7; // Monday=0
+        currentWeek = new Array(dow).fill(null);
+      }
+
+      currentWeek.push(date);
+
+      if (currentWeek.length === 7) {
+        weeks.push(currentWeek);
+        currentWeek = [];
+      }
+    });
+
+    if (currentWeek.length > 0) {
+      while (currentWeek.length < 7) currentWeek.push(null);
+      weeks.push(currentWeek);
+    }
+
+    return weeks;
+  };
+
+  // -------------------------------
+  // UPDATE LEG (AUTO CORRECT DATES)
+  // -------------------------------
+  const updateLeg = (updatedLeg) => {
+    const corrected = { ...updatedLeg };
+
+    if (corrected.startDate && corrected.endDate) {
+      if (corrected.startDate > corrected.endDate) {
+        corrected.endDate = corrected.startDate;
+      }
+      if (corrected.endDate < corrected.startDate) {
+        corrected.startDate = corrected.endDate;
+      }
+    }
+
+    const stored = JSON.parse(localStorage.getItem("tripLegs")) || [];
     const updated = stored.map((l) =>
-      l.name === updatedLeg.name ? updatedLeg : l
+      l.name === corrected.name ? corrected : l
     );
 
     localStorage.setItem("tripLegs", JSON.stringify(updated));
-    setLeg(updatedLeg);
+    setLeg(corrected);
+
+    if (corrected.startDate && corrected.endDate) {
+      setAllDates(generateDateRange(corrected.startDate, corrected.endDate));
+      setCurrentWeekIndex(0);
+    }
   };
 
-  // Save schedule
+  // -------------------------------
+  // UPDATE SCHEDULE
+  // -------------------------------
   const saveSchedule = (updated) => {
     const stored = JSON.parse(localStorage.getItem("tripLegs")) || [];
-
     const updatedLegs = stored.map((l) =>
       l.name === leg.name ? { ...l, plannedActivities: updated } : l
     );
-
     localStorage.setItem("tripLegs", JSON.stringify(updatedLegs));
     setSchedule(updated);
   };
 
-  // Edit field in schedule
-  const handleTimeChange = (index, field, value) => {
-    const updated = [...schedule];
-    updated[index][field] = value;
-    saveSchedule(updated);
+  const updateActivity = (index, updated) => {
+    const newS = [...schedule];
+    newS[index] = updated;
+    saveSchedule(newS);
   };
 
-  const handleRemove = (index) => {
-    const updated = schedule.filter((_, i) => i !== index);
-    saveSchedule(updated);
+  const removeActivity = (index) => {
+    saveSchedule(schedule.filter((_, i) => i !== index));
   };
 
-  // Move activity (not used in day-by-day mode but still here)
-  const moveActivity = (index, direction) => {
-    const newIndex = index + direction;
-    if (newIndex < 0 || newIndex >= schedule.length) return;
+  // -------------------------------
+  // CALENDAR CONFIG
+  // -------------------------------
+  const HOURS = Array.from({ length: 17 }, (_, i) => 6 + i);
+  const hourHeight = 60; // px per hour
 
-    const updated = [...schedule];
-    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
-    saveSchedule(updated);
-  };
+  // -------------------------------
+  // WEEK + ACTIVITY MAPPING
+  // -------------------------------
+  const weeks = groupDatesIntoWeeks(allDates);
+  const currentWeek = weeks[currentWeekIndex] || [];
 
-  // Day Pager
-  const goNextDay = () => {
-    if (currentDay < (leg?.days || 1)) setCurrentDay(currentDay + 1);
-  };
+  const activitiesByDate = {};
+  schedule.forEach((act) => {
+    if (!activitiesByDate[act.date]) activitiesByDate[act.date] = [];
+    activitiesByDate[act.date].push(act);
+  });
 
-  const goPrevDay = () => {
-    if (currentDay > 1) setCurrentDay(currentDay - 1);
-  };
-
-  // Get activities for the current day
-  const dayActivities = leg
-    ? schedule
-        .filter((a) => (a.day || 1) === currentDay)
-        .sort((a, b) => a.start.localeCompare(b.start))
-    : [];
-
-  // ❗ Must appear after ALL hook calls
+  // -------------------------------
+  // RENDER
+  // -------------------------------
   if (!leg) return null;
 
   return (
@@ -99,65 +162,65 @@ export default function TripLeg() {
         ← Back to Itinerary Builder
       </Button>
 
-      <h2 className="mt-3">{leg.name} — Trip Leg</h2>
-      <p>Create your personalized schedule using the destination’s activities.</p>
+      <h2 className="mt-3">{leg.name} — Trip Schedule</h2>
 
-      {/* Trip Duration Controls */}
+      {/* DATE RANGE */}
       <Card className="shadow-sm mb-4">
         <Card.Body>
-          <h4>Trip Duration</h4>
-
+          <h4>Trip Date Range</h4>
           <Row>
             <Col md={4}>
               <Form.Label>Start Date</Form.Label>
               <Form.Control
                 type="date"
                 value={leg.startDate || ""}
-                onChange={(e) =>
-                  updateLeg({ ...leg, startDate: e.target.value })
-                }
+                onChange={(e) => updateLeg({ ...leg, startDate: e.target.value })}
               />
             </Col>
 
             <Col md={4}>
-              <Form.Label>Number of Days</Form.Label>
+              <Form.Label>End Date</Form.Label>
               <Form.Control
-                type="number"
-                min="1"
-                value={leg.days || 1}
-                onChange={(e) =>
-                  updateLeg({ ...leg, days: Number(e.target.value) })
-                }
+                type="date"
+                value={leg.endDate || ""}
+                onChange={(e) => updateLeg({ ...leg, endDate: e.target.value })}
               />
             </Col>
           </Row>
         </Card.Body>
       </Card>
 
-      <Row className="mt-4">
-        {/* Available Activities */}
-        <Col md={6}>
+      <Row>
+        {/* AVAILABLE ACTIVITIES */}
+        <Col md={4}>
           <Card className="shadow-sm mb-4">
             <Card.Body>
               <h4>Available Activities</h4>
+
               {leg.activities.map((act, i) => (
                 <Card key={i} className="mb-3">
                   <Card.Body>
                     <Card.Title>{act.title}</Card.Title>
-                    <Card.Subtitle className="mb-2 text-muted">
-                      {act.start} – {act.end}
-                    </Card.Subtitle>
+                    <Card.Subtitle>{act.start} – {act.end}</Card.Subtitle>
                     <Card.Text>{act.description}</Card.Text>
 
-                    <Button
-                      variant="primary"
-                      onClick={() => {
-                        const updated = [...schedule, { ...act }];
-                        saveSchedule(updated);
+                    <Form.Label>Assign Date</Form.Label>
+                    <Form.Select
+                      onChange={(e) => {
+                        const newAct = { ...act, date: e.target.value };
+                        saveSchedule([...schedule, newAct]);
                       }}
                     >
-                      Add to Schedule
-                    </Button>
+                      <option value="">Select Date</option>
+                      {allDates.map((d) => {
+                        const iso = d.toISOString().split("T")[0];
+                        return (
+                          <option key={iso} value={iso}>
+                            {iso}
+                          </option>
+                        );
+                      })}
+                    </Form.Select>
                   </Card.Body>
                 </Card>
               ))}
@@ -165,106 +228,112 @@ export default function TripLeg() {
           </Card>
         </Col>
 
-        {/* Daily Schedule */}
-        <Col md={6}>
-          <Card className="shadow-sm mt-4">
-            <Card.Body>
-              <h4>Daily Schedule</h4>
+        {/* WEEKLY CALENDAR */}
+        <Col md={8}>
+          <Card className="shadow-sm p-3">
+            <h4 className="mb-3">Weekly Calendar</h4>
 
-              {/* Pagination */}
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <Button
-                  variant="outline-secondary"
-                  onClick={goPrevDay}
-                  disabled={currentDay === 1}
-                >
-                  ← Previous Day
-                </Button>
+            {/* Pagination */}
+            <div className="d-flex justify-content-between mb-3">
+              <Button
+                variant="outline-secondary"
+                disabled={currentWeekIndex === 0}
+                onClick={() => setCurrentWeekIndex(currentWeekIndex - 1)}
+              >
+                ← Previous Week
+              </Button>
 
-                <strong>
-                  Day {currentDay} of {leg.days || 1}
-                </strong>
+              <strong>Week {currentWeekIndex + 1}</strong>
 
-                <Button
-                  variant="outline-secondary"
-                  onClick={goNextDay}
-                  disabled={currentDay === (leg.days || 1)}
-                >
-                  Next Day →
-                </Button>
+              <Button
+                variant="outline-secondary"
+                disabled={currentWeekIndex === weeks.length - 1}
+                onClick={() => setCurrentWeekIndex(currentWeekIndex + 1)}
+              >
+                Next Week →
+              </Button>
+            </div>
+
+            {/* GRID */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "80px repeat(7, 1fr)",
+                gap: 4
+              }}
+            >
+              {/* HOURS COLUMN */}
+              <div>
+                {HOURS.map((h) => (
+                  <div
+                    key={h}
+                    style={{
+                      height: hourHeight,
+                      borderBottom: "1px solid #ddd"
+                    }}
+                  >
+                    {String(h).padStart(2, "0")}:00
+                  </div>
+                ))}
               </div>
 
-              {dayActivities.length === 0 && (
-                <p className="text-muted">
-                  No activities scheduled for this day yet.
-                </p>
-              )}
-
-              {dayActivities.map((item, index) => {
-                const globalIndex = schedule.indexOf(item);
+              {/* DAY COLUMNS */}
+              {currentWeek.map((date, dayIndex) => {
+                const iso = date ? date.toISOString().split("T")[0] : null;
+                const acts = iso ? activitiesByDate[iso] || [] : [];
 
                 return (
-                  <Card key={globalIndex} className="mb-3 border-primary">
-                    <Card.Body>
-                      <Card.Title>{item.title}</Card.Title>
+                  <div
+                    key={dayIndex}
+                    style={{
+                      position: "relative",
+                      borderLeft: "1px solid #ccc",
+                      borderRight: "1px solid #ccc",
+                      minHeight: HOURS.length * hourHeight
+                    }}
+                  >
+                    {/* HEADER */}
+                    <div className="text-center fw-bold mb-2">
+                      {date
+                        ? date.toLocaleDateString("en-US", {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric"
+                          })
+                        : "-"}
+                    </div>
 
-                      <Row className="mb-2">
-                        <Col>
-                          <Form.Label>Start</Form.Label>
-                          <Form.Control
-                            type="time"
-                            value={item.start}
-                            onChange={(e) =>
-                              handleTimeChange(globalIndex, "start", e.target.value)
-                            }
-                          />
-                        </Col>
+                    {/* HOUR GRID */}
+                    {HOURS.map((h) => (
+                      <div
+                        key={h}
+                        style={{
+                          height: hourHeight,
+                          borderBottom: "1px solid #eee"
+                        }}
+                      ></div>
+                    ))}
 
-                        <Col>
-                          <Form.Label>End</Form.Label>
-                          <Form.Control
-                            type="time"
-                            value={item.end}
-                            onChange={(e) =>
-                              handleTimeChange(globalIndex, "end", e.target.value)
-                            }
-                          />
-                        </Col>
-                      </Row>
+                    {/* ACTIVITY BLOCKS */}
+                    {acts.map((activity) => {
+                      const index = schedule.indexOf(activity);
 
-                      <Row className="mb-2">
-                        <Col>
-                          <Form.Label>Day</Form.Label>
-                          <Form.Select
-                            value={item.day || 1}
-                            onChange={(e) =>
-                              handleTimeChange(
-                                globalIndex,
-                                "day",
-                                Number(e.target.value)
-                              )
-                            }
-                          >
-                            {[...Array(leg.days || 1)].map((_, d) => (
-                              <option key={d + 1} value={d + 1}>
-                                Day {d + 1}
-                              </option>
-                            ))}
-                          </Form.Select>
-                        </Col>
-                      </Row>
-
-                      <Button
-                        variant="danger"
-                        onClick={() => handleRemove(globalIndex)}
-                      >
-                        Remove Activity
-                      </Button>
-                    </Card.Body>
-                  </Card>
+                      return (
+                        <ActivityBlock
+                          key={`${activity.title}-${activity.start}-${activity.date}`}
+                          activity={activity}
+                          columnDate={date}
+                          hourHeight={hourHeight}
+                          snapMinutes={30}
+                          onUpdate={(updated) => updateActivity(index, updated)}
+                          onRemove={() => removeActivity(index)}
+                        />
+                      );
+                    })}
+                  </div>
                 );
               })}
-            </Card.Body>
+            </div>
           </Card>
         </Col>
       </Row>

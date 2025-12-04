@@ -43,11 +43,11 @@ export default function DestinationDetails() {
     if (!exists) {
       tripLegs.push({
         ...destination,
-        activities: activities,
+        activities,
         plannedActivities: [],
         startDate: "",
-        days: 1
-      });
+        endDate: ""   // NEW: required for date-range mode
+      });      
       localStorage.setItem("tripLegs", JSON.stringify(tripLegs));
     }
 
@@ -62,7 +62,13 @@ export default function DestinationDetails() {
 
     if (!leg) {
       // auto-create leg if user adds activity before adding city
-      leg = { ...destination, plannedActivities: [] };
+      leg = {
+        ...destination,
+        plannedActivities: [],
+        startDate: "",
+        endDate: "",    // required for date-range scheduling
+        activities: activities // ensure activities still exist
+      };
       tripLegs.push(leg);
     }
 
@@ -72,9 +78,14 @@ export default function DestinationDetails() {
     );
 
     if (!exists) {
-      leg.plannedActivities = [...(leg.plannedActivities || []), activity];
+      const newActivity = {
+        ...activity,
+        date: "" // user will set this in TripLeg
+      };
+    
+      leg.plannedActivities = [...(leg.plannedActivities || []), newActivity];
       localStorage.setItem("tripLegs", JSON.stringify(tripLegs));
-
+    
       alert(`Saved activity: ${activity.title}`);
     }
   };
