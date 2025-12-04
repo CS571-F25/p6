@@ -44,7 +44,9 @@ export default function DestinationDetails() {
       tripLegs.push({
         ...destination,
         activities: activities,
-        plannedActivities: [], // will hold user scheduled activities in future
+        plannedActivities: [],
+        startDate: "",
+        days: 1
       });
       localStorage.setItem("tripLegs", JSON.stringify(tripLegs));
     }
