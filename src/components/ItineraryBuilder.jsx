@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import { Container, Row, Col, Card, Button, Form } from "react-bootstrap";
 
 export default function ItineraryBuilder() {
@@ -6,8 +7,8 @@ export default function ItineraryBuilder() {
   const [notes, setNotes] = useState({});
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("savedDestinations")) || [];
-    setSavedDestinations(stored);
+    const stored = JSON.parse(localStorage.getItem("tripLegs")) || [];
+setSavedDestinations(stored);
   }, []);
 
   const handleNoteChange = (name, text) => {
@@ -45,7 +46,13 @@ export default function ItineraryBuilder() {
                     value={notes[dest.name] || ""}
                     onChange={(e) => handleNoteChange(dest.name, e.target.value)}
                   />
-
+                  <Button
+                    as={Link}
+                    to={`/builder/leg/${dest.name.toLowerCase().replace(/\s+/g, "-")}`}
+                    variant="primary"
+                  >
+                    Open Trip Leg
+                  </Button>
                   <Button
                     variant="danger"
                     className="mt-3"

@@ -1,48 +1,110 @@
 [
-    {
-      "name": "Paris",
-      "country": "France",
-      "distanceFromMadison": {
-        "miles": 4190,
-        "travelTime": "8 hours (nonstop flight)"
-      },
-      "description": "Paris is a global center for art, culture, food, and history. Known for its romantic charm, iconic architecture, and world-class museums, Paris offers a blend of historic beauty and modern life along the Seine.",
-      "activities": [
-        "Visit the Eiffel Tower",
-        "Explore the Louvre Museum",
-        "Walk through Montmartre & Sacré-Cœur"
-      ],
-      "image": "images/Paris.jpg"
+  {
+    "name": "Paris",
+    "country": "France",
+    "distanceFromMadison": {
+      "miles": 4190,
+      "travelTime": "8 hours (nonstop flight)"
     },
-    {
-      "name": "Los Angeles",
-      "country": "United States",
-      "distanceFromMadison": {
-        "miles": 2015,
-        "travelTime": "4 hours (nonstop flight)"
+    "distanceFromCityCenter": "0–3 miles depending on district",
+    "price": "$50–$150/day (avg. attractions & meals)",
+    "annualVisitors": 36000000,
+    "bestSeason": "Spring (April–June) & Fall (September–October)",
+    "bestTimeOfDay": "Evening for landmarks, early morning for museums",
+    "effortLevel": "Moderate — a lot of walking required",
+    "description": "Paris is a global center for art, culture, food, and history. Known for its romantic charm, iconic architecture, and world-class museums, Paris offers a blend of historic beauty and modern life along the Seine.",
+    "activities": [
+      {
+        "title": "Visit the Eiffel Tower",
+        "description": "Explore one of the world’s most iconic landmarks, including the observation decks.",
+        "start": "09:00",
+        "end": "11:00"
       },
-      "description": "Los Angeles is a sprawling coastal city known for entertainment, beaches, diverse food, and creative culture. From Hollywood to Santa Monica, LA mixes urban excitement with relaxed Southern California vibes.",
-      "activities": [
-        "Walk along Santa Monica Pier",
-        "Visit the Griffith Observatory",
-        "Explore Hollywood Boulevard"
-      ],
-      "image": "images/LosAngeles.jpg"
+      {
+        "title": "Explore the Louvre Museum",
+        "description": "See world-famous works like the Mona Lisa and Winged Victory.",
+        "start": "11:30",
+        "end": "15:00"
+      },
+      {
+        "title": "Walk through Montmartre & Sacré-Cœur",
+        "description": "Stroll the artistic streets and enjoy sweeping views of Paris.",
+        "start": "16:00",
+        "end": "18:00"
+      }
+    ],
+    "image": "images/Paris.jpg"
+  },
+  {
+    "name": "Los Angeles",
+    "country": "United States",
+    "distanceFromMadison": {
+      "miles": 2015,
+      "travelTime": "4 hours (nonstop flight)"
     },
-    {
-      "name": "New York City",
-      "country": "United States",
-      "distanceFromMadison": {
-        "miles": 890,
-        "travelTime": "2 hours (nonstop flight)"
+    "distanceFromCityCenter": "5–20 miles depending on neighborhood",
+    "price": "$60–$180/day (avg. attractions & meals)",
+    "annualVisitors": 50000000,
+    "bestSeason": "Late spring & early fall",
+    "bestTimeOfDay": "Late afternoon for beaches, nighttime for observatory",
+    "effortLevel": "Low to Moderate — depends on activity",
+    "description": "Los Angeles is a sprawling coastal city known for entertainment, beaches, diverse food, and creative culture. From Hollywood to Santa Monica, LA mixes urban excitement with relaxed Southern California vibes.",
+    "activities": [
+      {
+        "title": "Walk along Santa Monica Pier",
+        "description": "Enjoy the ocean views, amusement rides, and lively boardwalk.",
+        "start": "10:00",
+        "end": "11:30"
       },
-      "description": "New York City is a fast-paced cultural capital known for skyscrapers, world-class shows, iconic parks, and unbeatable food. Each borough offers something unique, from Manhattan’s landmarks to Brooklyn’s creative neighborhoods.",
-      "activities": [
-        "See Times Square",
-        "Walk through Central Park",
-        "Visit the Metropolitan Museum of Art"
-      ],
-      "image": "images/NewYork.jpg"
-    }
-  ]
-  
+      {
+        "title": "Visit the Griffith Observatory",
+        "description": "Learn about astronomy and enjoy panoramic views of LA.",
+        "start": "14:00",
+        "end": "16:00"
+      },
+      {
+        "title": "Explore Hollywood Boulevard",
+        "description": "See the Walk of Fame, street performers, and historic theaters.",
+        "start": "17:00",
+        "end": "18:30"
+      }
+    ],
+    "image": "images/LosAngeles.jpg"
+  },
+  {
+    "name": "New York City",
+    "country": "United States",
+    "distanceFromMadison": {
+      "miles": 890,
+      "travelTime": "2 hours (nonstop flight)"
+    },
+    "distanceFromCityCenter": "Varies — most attractions 0–3 miles from midtown",
+    "price": "$70–$200/day",
+    "annualVisitors": 66000000,
+    "bestSeason": "Spring and Fall",
+    "bestTimeOfDay": "Morning for museums, evening for Times Square",
+    "effortLevel": "Moderate to High — heavy walking, stairs, and transit",
+    "description": "New York City is a fast-paced cultural capital known for skyscrapers, world-class shows, iconic parks, and unbeatable food. Each borough offers something unique, from Manhattan’s landmarks to Brooklyn’s creative neighborhoods.",
+    "activities": [
+      {
+        "title": "See Times Square",
+        "description": "Experience the lights, billboards, and energetic crowds.",
+        "start": "19:00",
+        "end": "20:00"
+      },
+      {
+        "title": "Walk through Central Park",
+        "description": "A scenic stroll through NYC’s most famous green space.",
+        "start": "10:00",
+        "end": "12:00"
+      },
+      {
+        "title": "Visit the Metropolitan Museum of Art",
+        "description": "Explore one of the world’s greatest art collections.",
+        "start": "13:00",
+        "end": "16:00"
+      }
+    ],
+    "image": "images/NewYork.jpg"
+  }
+]

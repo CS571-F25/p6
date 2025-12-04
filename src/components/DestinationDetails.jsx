@@ -1,16 +1,13 @@
 import { useParams } from "react-router";
 import destinations from "../data/destinations.json";
-import { Container, Row, Col, Button, Card } from "react-bootstrap";
+import { Container, Row, Col, Button, Card, ListGroup } from "react-bootstrap";
 
 export default function DestinationDetails() {
   const { name } = useParams();
 
-  // convert slug back into data name
   const formattedName = name.replace(/-/g, " ").toLowerCase();
-
-  // find the matching destination
-  const destination = destinations.find(dest => 
-    dest.name.toLowerCase() === formattedName
+  const destination = destinations.find(
+    (dest) => dest.name.toLowerCase() === formattedName
   );
 
   if (!destination) {
@@ -22,29 +19,64 @@ export default function DestinationDetails() {
     );
   }
 
-  const { 
-    image, 
-    name: cityName, 
-    country, 
-    description, 
-    distanceFromMadison, 
-    activities 
+  const {
+    image,
+    name: cityName,
+    country,
+    description,
+    distanceFromMadison,
+    distanceFromCityCenter,
+    price,
+    annualVisitors,
+    bestSeason,
+    bestTimeOfDay,
+    effortLevel,
+    activities,
   } = destination;
 
+  // Save the destination (plus metadata) into tripLegs for itinerary use
   const handleAddToTrip = () => {
-    // Retrieve existing saved destinations
-    const saved = JSON.parse(localStorage.getItem("savedDestinations")) || [];
-  
-    // Add the new destination if not already saved
-    const exists = saved.some(dest => dest.name === cityName);
+    const tripLegs = JSON.parse(localStorage.getItem("tripLegs")) || [];
+
+    // don't duplicate
+    const exists = tripLegs.some((leg) => leg.name === cityName);
     if (!exists) {
-      saved.push(destination);
-      localStorage.setItem("savedDestinations", JSON.stringify(saved));
+      tripLegs.push({
+        ...destination,
+        activities: activities,
+        plannedActivities: [], // will hold user scheduled activities in future
+      });
+      localStorage.setItem("tripLegs", JSON.stringify(tripLegs));
     }
-  
-    alert(`${cityName}, ${country} has been added to your trip!`);
+
+    alert(`${cityName}, ${country} has been added to your itinerary!`);
   };
-  
+
+  // Add individual activity into saved schedule for future "leg" page
+  const handleSaveActivity = (activity) => {
+    const tripLegs = JSON.parse(localStorage.getItem("tripLegs")) || [];
+
+    let leg = tripLegs.find((l) => l.name === cityName);
+
+    if (!leg) {
+      // auto-create leg if user adds activity before adding city
+      leg = { ...destination, plannedActivities: [] };
+      tripLegs.push(leg);
+    }
+
+    // avoid duplicates
+    const exists = leg.plannedActivities?.some(
+      (a) => a.title === activity.title && a.start === activity.start
+    );
+
+    if (!exists) {
+      leg.plannedActivities = [...(leg.plannedActivities || []), activity];
+      localStorage.setItem("tripLegs", JSON.stringify(tripLegs));
+
+      alert(`Saved activity: ${activity.title}`);
+    }
+  };
+
   return (
     <Container className="mt-4">
       <Row>
@@ -56,20 +88,47 @@ export default function DestinationDetails() {
           <h2>{cityName}, {country}</h2>
           <p>{description}</p>
 
-          <h5>Distance from Madison</h5>
-          <p>{distanceFromMadison.miles} miles — {distanceFromMadison.travelTime}</p>
-
-          <h5>Top Activities</h5>
-          <ul>
-            {activities.map((act, i) => (
-              <li key={i}>{act}</li>
-            ))}
-          </ul>
+          <h5>General Info</h5>
+          <ListGroup className="mb-3">
+            <ListGroup.Item><strong>Distance from Madison:</strong> {distanceFromMadison.miles} miles — {distanceFromMadison.travelTime}</ListGroup.Item>
+            <ListGroup.Item><strong>Distance from City Center:</strong> {distanceFromCityCenter}</ListGroup.Item>
+            <ListGroup.Item><strong>Price:</strong> {price}</ListGroup.Item>
+            <ListGroup.Item><strong>Annual Visitors:</strong> {annualVisitors.toLocaleString()}</ListGroup.Item>
+            <ListGroup.Item><strong>Best Season:</strong> {bestSeason}</ListGroup.Item>
+            <ListGroup.Item><strong>Best Time of Day:</strong> {bestTimeOfDay}</ListGroup.Item>
+            <ListGroup.Item><strong>Effort Level:</strong> {effortLevel}</ListGroup.Item>
+          </ListGroup>
 
           <Button variant="success" onClick={handleAddToTrip}>
-            Add to Trip
+            Add Entire Destination to Itinerary
           </Button>
         </Col>
+      </Row>
+
+      <hr />
+
+      <h4 className="mt-4">Activities With Time Ranges</h4>
+      <Row>
+        {activities.map((act, i) => (
+          <Col md={6} key={i} className="mb-3">
+            <Card className="shadow-sm">
+              <Card.Body>
+                <Card.Title>{act.title}</Card.Title>
+                <Card.Subtitle className="mb-2 text-muted">
+                  {act.start} – {act.end}
+                </Card.Subtitle>
+                <Card.Text>{act.description}</Card.Text>
+
+                <Button
+                  variant="primary"
+                  onClick={() => handleSaveActivity(act)}
+                >
+                  Save Activity to Itinerary
+                </Button>
+              </Card.Body>
+            </Card>
+          </Col>
+        ))}
       </Row>
     </Container>
   );

@@ -8,6 +8,7 @@ import NavBar from './components/NavBar.jsx'
 import Destinations from './components/Destinations.jsx'
 import DestinationDetails from "./components/DestinationDetails.jsx";
 import ItineraryBuilder from "./components/ItineraryBuilder";
+import TripLeg from "./components/TripLeg";
 
 function App() {
   return <HashRouter>
@@ -18,6 +19,7 @@ function App() {
       <Route path='/destinations' element={<Destinations />}></Route>
       <Route path="/destinations/:name" element={<DestinationDetails />} />
       <Route path="/builder" element={<ItineraryBuilder />} />
+      <Route path="/builder/leg/:legName" element={<TripLeg />} />
     </Routes>
   </HashRouter>
 }
