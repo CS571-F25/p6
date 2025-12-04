@@ -83,7 +83,7 @@ export default function Home(props) {
                     destination and activity information.
                 </p>
 
-                <Button>
+                <Button as={Link} to="/builder">
                     Build Your Itinerary
                 </Button>
             </Row>

@@ -32,9 +32,19 @@ export default function DestinationDetails() {
   } = destination;
 
   const handleAddToTrip = () => {
+    // Retrieve existing saved destinations
+    const saved = JSON.parse(localStorage.getItem("savedDestinations")) || [];
+  
+    // Add the new destination if not already saved
+    const exists = saved.some(dest => dest.name === cityName);
+    if (!exists) {
+      saved.push(destination);
+      localStorage.setItem("savedDestinations", JSON.stringify(saved));
+    }
+  
     alert(`${cityName}, ${country} has been added to your trip!`);
   };
-
+  
   return (
     <Container className="mt-4">
       <Row>
