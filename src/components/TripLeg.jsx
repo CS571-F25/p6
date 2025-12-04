@@ -2,6 +2,8 @@ import { useParams, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
 import { Container, Row, Col, Card, Button, Form } from "react-bootstrap";
 import ActivityBlock from "../components/ActivityBlock";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 export default function TripLeg() {
   const { legName } = useParams();
@@ -87,7 +89,7 @@ export default function TripLeg() {
   // -------------------------------
   const updateLeg = (updatedLeg) => {
     const corrected = { ...updatedLeg };
-
+  
     if (corrected.startDate && corrected.endDate) {
       if (corrected.startDate > corrected.endDate) {
         corrected.endDate = corrected.startDate;
@@ -96,20 +98,46 @@ export default function TripLeg() {
         corrected.startDate = corrected.endDate;
       }
     }
-
+  
+    // REMOVE ACTIVITIES OUTSIDE THE NEW DATE RANGE
+    let cleanedSchedule = schedule;
+  
+    if (corrected.startDate && corrected.endDate) {
+      const start = corrected.startDate;
+      const end = corrected.endDate;
+  
+      cleanedSchedule = schedule.filter((act) => {
+        if (!act.date) return false; // unscheduled activities shouldn't persist
+        return act.date >= start && act.date <= end;
+      });
+  
+      // Save cleaned schedule
+      const stored = JSON.parse(localStorage.getItem("tripLegs")) || [];
+      const updatedLegs = stored.map((l) =>
+        l.name === corrected.name
+          ? { ...l, ...corrected, plannedActivities: cleanedSchedule }
+          : l
+      );
+  
+      localStorage.setItem("tripLegs", JSON.stringify(updatedLegs));
+      setSchedule(cleanedSchedule);
+    }
+  
+    // Save the corrected leg normally
     const stored = JSON.parse(localStorage.getItem("tripLegs")) || [];
     const updated = stored.map((l) =>
-      l.name === corrected.name ? corrected : l
+      l.name === corrected.name ? { ...l, ...corrected } : l
     );
-
     localStorage.setItem("tripLegs", JSON.stringify(updated));
     setLeg(corrected);
-
+  
+    // Regenerate date range
     if (corrected.startDate && corrected.endDate) {
       setAllDates(generateDateRange(corrected.startDate, corrected.endDate));
       setCurrentWeekIndex(0);
     }
   };
+  
 
   // -------------------------------
   // UPDATE SCHEDULE
@@ -171,20 +199,35 @@ export default function TripLeg() {
           <Row>
             <Col md={4}>
               <Form.Label>Start Date</Form.Label>
-              <Form.Control
-                type="date"
-                value={leg.startDate || ""}
-                onChange={(e) => updateLeg({ ...leg, startDate: e.target.value })}
-              />
+              <DatePicker
+                selected={leg.startDate ? new Date(leg.startDate) : null}
+                onChange={(date) => {
+                    const iso = date.toISOString().split("T")[0];
+                    updateLeg({ ...leg, startDate: iso });
+                }}
+                selectsStart
+                startDate={leg.startDate ? new Date(leg.startDate) : null}
+                endDate={leg.endDate ? new Date(leg.endDate) : null}
+                className="form-control"
+                placeholderText="Select start date"
+                />
             </Col>
 
             <Col md={4}>
               <Form.Label>End Date</Form.Label>
-              <Form.Control
-                type="date"
-                value={leg.endDate || ""}
-                onChange={(e) => updateLeg({ ...leg, endDate: e.target.value })}
-              />
+              <DatePicker
+                selected={leg.endDate ? new Date(leg.endDate) : null}
+                onChange={(date) => {
+                    const iso = date.toISOString().split("T")[0];
+                    updateLeg({ ...leg, endDate: iso });
+                }}
+                selectsEnd
+                startDate={leg.startDate ? new Date(leg.startDate) : null}
+                endDate={leg.endDate ? new Date(leg.endDate) : null}
+                minDate={leg.startDate ? new Date(leg.startDate) : null}
+                className="form-control"
+                placeholderText="Select end date"
+                />
             </Col>
           </Row>
         </Card.Body>

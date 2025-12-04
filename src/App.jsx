@@ -9,6 +9,7 @@ import Destinations from './components/Destinations.jsx'
 import DestinationDetails from "./components/DestinationDetails.jsx";
 import ItineraryBuilder from "./components/ItineraryBuilder";
 import TripLeg from "./components/TripLeg";
+import FinalSchedule from "./components/FinalSchedule.jsx";
 
 function App() {
   return <HashRouter>
@@ -20,6 +21,7 @@ function App() {
       <Route path="/destinations/:name" element={<DestinationDetails />} />
       <Route path="/builder" element={<ItineraryBuilder />} />
       <Route path="/builder/leg/:legName" element={<TripLeg />} />
+      <Route path="/final-schedule" element={<FinalSchedule />} />
     </Routes>
   </HashRouter>
 }
