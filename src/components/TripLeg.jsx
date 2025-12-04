@@ -2,24 +2,47 @@ import { useParams, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
 import { Container, Row, Col, Card, Button, Form } from "react-bootstrap";
 import ActivityBlock from "../components/ActivityBlock";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
 
+// =====================================================
+// TIME HELPERS
+// =====================================================
+const parseTime = (t) => {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+};
+
+const minutesToTime = (total) => {
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+};
+
+// Convert "YYYY-MM-DD" to *local* Date safely
+const makeLocalDate = (iso) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
+
+// Format Date → "YYYY-MM-DD" in local time (NO UTC SHIFT)
+const toISODate = (date) => {
+  return date.toLocaleDateString("en-CA");
+};
+
+// =====================================================
+// COMPONENT
+// =====================================================
 export default function TripLeg() {
   const { legName } = useParams();
   const navigate = useNavigate();
 
-  // -------------------------------
-  // HOOKS
-  // -------------------------------
   const [leg, setLeg] = useState(null);
   const [schedule, setSchedule] = useState([]);
   const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
   const [allDates, setAllDates] = useState([]);
 
-  // -------------------------------
-  // LOAD LEG
-  // -------------------------------
+  // =====================================================
+  // LOAD LEG + MIGRATE OLD START/END INTO DURATION MODEL
+  // =====================================================
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("tripLegs")) || [];
     const found = stored.find(
@@ -31,40 +54,52 @@ export default function TripLeg() {
       return;
     }
 
+    const migrated = (found.plannedActivities || []).map((a) => {
+      if (a.duration != null) return a;
+
+      const s = parseTime(a.start);
+      const e = parseTime(a.end);
+      return {
+        ...a,
+        duration: Math.min(Math.max(e - s, 30), 240),
+      };
+    });
+
+    found.plannedActivities = migrated;
+
     setLeg(found);
-    setSchedule(found.plannedActivities || []);
+    setSchedule(migrated);
 
     if (found.startDate && found.endDate) {
       setAllDates(generateDateRange(found.startDate, found.endDate));
     }
   }, [legName, navigate]);
 
-  // -------------------------------
-  // DATE RANGE GENERATION (DST SAFE)
-  // -------------------------------
+  // =====================================================
+  // GENERATE SAFE LOCAL DATE RANGE
+  // =====================================================
   const generateDateRange = (start, end) => {
     const dates = [];
-    let cur = new Date(start + "T00:00:00Z");
-    const endDate = new Date(end + "T00:00:00Z");
+    let cur = makeLocalDate(start);
+    const endDate = makeLocalDate(end);
 
     while (cur <= endDate) {
       dates.push(new Date(cur));
-      cur.setUTCDate(cur.getUTCDate() + 1);
+      cur.setDate(cur.getDate() + 1);
     }
-
     return dates;
   };
 
-  // -------------------------------
-  // GROUP DATES INTO MON–SUN WEEKS
-  // -------------------------------
+  // =====================================================
+  // GROUP DATES INTO WEEKS
+  // =====================================================
   const groupDatesIntoWeeks = (dates) => {
     const weeks = [];
     let currentWeek = [];
 
     dates.forEach((date) => {
       if (currentWeek.length === 0) {
-        const dow = (date.getDay() + 6) % 7; // Monday=0
+        const dow = (date.getDay() + 6) % 7;
         currentWeek = new Array(dow).fill(null);
       }
 
@@ -84,70 +119,64 @@ export default function TripLeg() {
     return weeks;
   };
 
-  // -------------------------------
-  // UPDATE LEG (AUTO CORRECT DATES)
-  // -------------------------------
-  const updateLeg = (updatedLeg) => {
-    const corrected = { ...updatedLeg };
-  
+  // =====================================================
+  // UPDATE LEG + CLEAN ACTIVITIES OUTSIDE RANGE
+  // =====================================================
+  const updateLeg = (updated) => {
+    const corrected = { ...updated };
+
+    // Fix reversed dates
     if (corrected.startDate && corrected.endDate) {
-      if (corrected.startDate > corrected.endDate) {
+      if (corrected.startDate > corrected.endDate)
         corrected.endDate = corrected.startDate;
-      }
-      if (corrected.endDate < corrected.startDate) {
+      if (corrected.endDate < corrected.startDate)
         corrected.startDate = corrected.endDate;
-      }
     }
-  
-    // REMOVE ACTIVITIES OUTSIDE THE NEW DATE RANGE
-    let cleanedSchedule = schedule;
-  
+
+    // Clean schedule
+    let cleaned = schedule;
     if (corrected.startDate && corrected.endDate) {
-      const start = corrected.startDate;
-      const end = corrected.endDate;
-  
-      cleanedSchedule = schedule.filter((act) => {
-        if (!act.date) return false; // unscheduled activities shouldn't persist
-        return act.date >= start && act.date <= end;
-      });
-  
-      // Save cleaned schedule
+      cleaned = schedule.filter(
+        (a) => a.date && a.date >= corrected.startDate && a.date <= corrected.endDate
+      );
+
+      setSchedule(cleaned);
+
       const stored = JSON.parse(localStorage.getItem("tripLegs")) || [];
       const updatedLegs = stored.map((l) =>
         l.name === corrected.name
-          ? { ...l, ...corrected, plannedActivities: cleanedSchedule }
+          ? { ...l, ...corrected, plannedActivities: cleaned }
           : l
       );
-  
       localStorage.setItem("tripLegs", JSON.stringify(updatedLegs));
-      setSchedule(cleanedSchedule);
     }
-  
-    // Save the corrected leg normally
+
+    // Save corrected leg
     const stored = JSON.parse(localStorage.getItem("tripLegs")) || [];
-    const updated = stored.map((l) =>
+    const replaced = stored.map((l) =>
       l.name === corrected.name ? { ...l, ...corrected } : l
     );
-    localStorage.setItem("tripLegs", JSON.stringify(updated));
+    localStorage.setItem("tripLegs", JSON.stringify(replaced));
+
     setLeg(corrected);
-  
-    // Regenerate date range
+
     if (corrected.startDate && corrected.endDate) {
       setAllDates(generateDateRange(corrected.startDate, corrected.endDate));
       setCurrentWeekIndex(0);
     }
   };
-  
 
-  // -------------------------------
-  // UPDATE SCHEDULE
-  // -------------------------------
+  // =====================================================
+  // SAVE SCHEDULE
+  // =====================================================
   const saveSchedule = (updated) => {
     const stored = JSON.parse(localStorage.getItem("tripLegs")) || [];
-    const updatedLegs = stored.map((l) =>
+
+    const newLegs = stored.map((l) =>
       l.name === leg.name ? { ...l, plannedActivities: updated } : l
     );
-    localStorage.setItem("tripLegs", JSON.stringify(updatedLegs));
+
+    localStorage.setItem("tripLegs", JSON.stringify(newLegs));
     setSchedule(updated);
   };
 
@@ -161,27 +190,54 @@ export default function TripLeg() {
     saveSchedule(schedule.filter((_, i) => i !== index));
   };
 
-  // -------------------------------
-  // CALENDAR CONFIG
-  // -------------------------------
-  const HOURS = Array.from({ length: 17 }, (_, i) => 6 + i);
-  const hourHeight = 60; // px per hour
+  // =====================================================
+  // EARLIEST POSSIBLE NON-CONFLICTING START TIME
+  // =====================================================
+  const findEarliestStart = (date, duration) => {
+    const acts = schedule
+      .filter((a) => a.date === date)
+      .sort((a, b) => parseTime(a.start) - parseTime(b.start));
 
-  // -------------------------------
-  // WEEK + ACTIVITY MAPPING
-  // -------------------------------
+    let earliest = 6 * 60; // start of calendar day
+
+    for (let i = 0; i < acts.length; i++) {
+      const a = acts[i];
+      const aStart = parseTime(a.start);
+      const aEnd = aStart + a.duration;
+
+      // If this activity fits before the next one:
+      if (earliest + duration <= aStart) {
+        return minutesToTime(earliest);
+      }
+
+      earliest = aEnd;
+    }
+
+    // If no gap, place after last activity
+    return minutesToTime(earliest);
+  };
+
+  // =====================================================
+  // CALENDAR CONFIG
+  // =====================================================
+  const HOURS = Array.from({ length: 17 }, (_, i) => 6 + i);
+  const hourHeight = 60;
+
+  // =====================================================
+  // GROUP ACTIVITIES BY DATE
+  // =====================================================
   const weeks = groupDatesIntoWeeks(allDates);
   const currentWeek = weeks[currentWeekIndex] || [];
 
-  const activitiesByDate = {};
-  schedule.forEach((act) => {
-    if (!activitiesByDate[act.date]) activitiesByDate[act.date] = [];
-    activitiesByDate[act.date].push(act);
+  const actsByDate = {};
+  schedule.forEach((a) => {
+    if (!actsByDate[a.date]) actsByDate[a.date] = [];
+    actsByDate[a.date].push(a);
   });
 
-  // -------------------------------
+  // =====================================================
   // RENDER
-  // -------------------------------
+  // =====================================================
   if (!leg) return null;
 
   return (
@@ -196,38 +252,28 @@ export default function TripLeg() {
       <Card className="shadow-sm mb-4">
         <Card.Body>
           <h4>Trip Date Range</h4>
+
           <Row>
             <Col md={4}>
               <Form.Label>Start Date</Form.Label>
-              <DatePicker
-                selected={leg.startDate ? new Date(leg.startDate) : null}
-                onChange={(date) => {
-                    const iso = date.toISOString().split("T")[0];
-                    updateLeg({ ...leg, startDate: iso });
-                }}
-                selectsStart
-                startDate={leg.startDate ? new Date(leg.startDate) : null}
-                endDate={leg.endDate ? new Date(leg.endDate) : null}
-                className="form-control"
-                placeholderText="Select start date"
-                />
+              <Form.Control
+                type="date"
+                value={leg.startDate || ""}
+                onChange={(e) =>
+                  updateLeg({ ...leg, startDate: e.target.value })
+                }
+              />
             </Col>
 
             <Col md={4}>
               <Form.Label>End Date</Form.Label>
-              <DatePicker
-                selected={leg.endDate ? new Date(leg.endDate) : null}
-                onChange={(date) => {
-                    const iso = date.toISOString().split("T")[0];
-                    updateLeg({ ...leg, endDate: iso });
-                }}
-                selectsEnd
-                startDate={leg.startDate ? new Date(leg.startDate) : null}
-                endDate={leg.endDate ? new Date(leg.endDate) : null}
-                minDate={leg.startDate ? new Date(leg.startDate) : null}
-                className="form-control"
-                placeholderText="Select end date"
-                />
+              <Form.Control
+                type="date"
+                value={leg.endDate || ""}
+                onChange={(e) =>
+                  updateLeg({ ...leg, endDate: e.target.value })
+                }
+              />
             </Col>
           </Row>
         </Card.Body>
@@ -240,33 +286,54 @@ export default function TripLeg() {
             <Card.Body>
               <h4>Available Activities</h4>
 
-              {leg.activities.map((act, i) => (
-                <Card key={i} className="mb-3">
-                  <Card.Body>
-                    <Card.Title>{act.title}</Card.Title>
-                    <Card.Subtitle>{act.start} – {act.end}</Card.Subtitle>
-                    <Card.Text>{act.description}</Card.Text>
+              {leg.activities.map((act, i) => {
+                const recMin = parseTime(act.end) - parseTime(act.start);
+                const duration = Math.min(Math.max(recMin, 30), 240);
 
-                    <Form.Label>Assign Date</Form.Label>
-                    <Form.Select
-                      onChange={(e) => {
-                        const newAct = { ...act, date: e.target.value };
-                        saveSchedule([...schedule, newAct]);
-                      }}
-                    >
-                      <option value="">Select Date</option>
-                      {allDates.map((d) => {
-                        const iso = d.toISOString().split("T")[0];
-                        return (
-                          <option key={iso} value={iso}>
-                            {iso}
-                          </option>
-                        );
-                      })}
-                    </Form.Select>
-                  </Card.Body>
-                </Card>
-              ))}
+                return (
+                  <Card key={i} className="mb-3">
+                    <Card.Body>
+                      <Card.Title>{act.title}</Card.Title>
+
+                      <Card.Subtitle className="mb-2 text-muted">
+                        ({Math.round((duration / 60) * 10) / 10} hours recommended)
+                      </Card.Subtitle>
+
+                      <Card.Text>{act.description}</Card.Text>
+
+                      <Form.Label>Assign Date</Form.Label>
+                      <Form.Select
+                        onChange={(e) => {
+                          const selected = e.target.value;
+                          if (!selected) return;
+
+                          const start = findEarliestStart(selected, duration);
+
+                          const newAct = {
+                            title: act.title,
+                            description: act.description,
+                            start,
+                            duration,
+                            date: selected,
+                          };
+
+                          saveSchedule([...schedule, newAct]);
+                        }}
+                      >
+                        <option value="">Select Date</option>
+                        {allDates.map((d) => {
+                          const iso = toISODate(d);
+                          return (
+                            <option key={iso} value={iso}>
+                              {iso}
+                            </option>
+                          );
+                        })}
+                      </Form.Select>
+                    </Card.Body>
+                  </Card>
+                );
+              })}
             </Card.Body>
           </Card>
         </Col>
@@ -302,17 +369,17 @@ export default function TripLeg() {
               style={{
                 display: "grid",
                 gridTemplateColumns: "80px repeat(7, 1fr)",
-                gap: 4
+                gap: 4,
               }}
             >
-              {/* HOURS COLUMN */}
+              {/* HOURS */}
               <div>
                 {HOURS.map((h) => (
                   <div
                     key={h}
                     style={{
                       height: hourHeight,
-                      borderBottom: "1px solid #ddd"
+                      borderBottom: "1px solid #ddd",
                     }}
                   >
                     {String(h).padStart(2, "0")}:00
@@ -320,51 +387,53 @@ export default function TripLeg() {
                 ))}
               </div>
 
-              {/* DAY COLUMNS */}
-              {currentWeek.map((date, dayIndex) => {
-                const iso = date ? date.toISOString().split("T")[0] : null;
-                const acts = iso ? activitiesByDate[iso] || [] : [];
+              {/* DAYS */}
+              {currentWeek.map((date, idx) => {
+                const iso = date ? toISODate(date) : null;
+                const dayActs = iso ? actsByDate[iso] || [] : [];
 
                 return (
                   <div
-                    key={dayIndex}
+                    key={idx}
                     style={{
                       position: "relative",
                       borderLeft: "1px solid #ccc",
                       borderRight: "1px solid #ccc",
-                      minHeight: HOURS.length * hourHeight
+                      minHeight: HOURS.length * hourHeight,
                     }}
                   >
-                    {/* HEADER */}
                     <div className="text-center fw-bold mb-2">
                       {date
                         ? date.toLocaleDateString("en-US", {
                             weekday: "short",
                             month: "short",
-                            day: "numeric"
+                            day: "numeric",
                           })
                         : "-"}
                     </div>
 
-                    {/* HOUR GRID */}
+                    {/* Hour grid */}
                     {HOURS.map((h) => (
                       <div
                         key={h}
                         style={{
                           height: hourHeight,
-                          borderBottom: "1px solid #eee"
+                          borderBottom: "1px solid #eee",
                         }}
                       ></div>
                     ))}
 
-                    {/* ACTIVITY BLOCKS */}
-                    {acts.map((activity) => {
+                    {/* Activities */}
+                    {dayActs.map((activity) => {
                       const index = schedule.indexOf(activity);
-
                       return (
                         <ActivityBlock
                           key={`${activity.title}-${activity.start}-${activity.date}`}
-                          activity={activity}
+                          activity={{
+                            ...activity,
+                            tripStartDate: leg.startDate,
+                            tripEndDate: leg.endDate
+                          }}
                           columnDate={date}
                           hourHeight={hourHeight}
                           snapMinutes={30}

@@ -1,147 +1,107 @@
-import { useParams } from "react-router";
-import destinations from "../data/destinations.json";
-import { Container, Row, Col, Button, Card, ListGroup } from "react-bootstrap";
+import { useParams, useNavigate } from "react-router";
+import { useEffect, useState } from "react";
+import { Container, Button, Card, Row, Col } from "react-bootstrap";
 
-export default function DestinationDetails() {
+// Time helpers
+const parseTime = (t) => {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+};
+
+export default function DestinationDetails({ destinations }) {
   const { name } = useParams();
+  const navigate = useNavigate();
 
-  const formattedName = name.replace(/-/g, " ").toLowerCase();
-  const destination = destinations.find(
-    (dest) => dest.name.toLowerCase() === formattedName
-  );
+  const [destination, setDestination] = useState(null);
 
-  if (!destination) {
-    return (
-      <Container className="mt-4">
-        <h2>Destination Not Found</h2>
-        <p>We couldn't find that location.</p>
-      </Container>
+  useEffect(() => {
+    const found = destinations.find(
+      (d) => d.name.toLowerCase().replace(/\s+/g, "-") === name
     );
-  }
+    setDestination(found);
+  }, [name, destinations]);
 
-  const {
-    image,
-    name: cityName,
-    country,
-    description,
-    distanceFromMadison,
-    distanceFromCityCenter,
-    price,
-    annualVisitors,
-    bestSeason,
-    bestTimeOfDay,
-    effortLevel,
-    activities,
-  } = destination;
+  if (!destination) return <p>Destination not found.</p>;
 
-  // Save the destination (plus metadata) into tripLegs for itinerary use
-  const handleAddToTrip = () => {
+  // Save activity into tripLegs (duration-based now)
+  const saveActivityToTrip = (activity) => {
     const tripLegs = JSON.parse(localStorage.getItem("tripLegs")) || [];
 
-    // don't duplicate
-    const exists = tripLegs.some((leg) => leg.name === cityName);
-    if (!exists) {
-      tripLegs.push({
-        ...destination,
-        activities,
-        plannedActivities: [],
-        startDate: "",
-        endDate: ""   // NEW: required for date-range mode
-      });      
-      localStorage.setItem("tripLegs", JSON.stringify(tripLegs));
-    }
-
-    alert(`${cityName}, ${country} has been added to your itinerary!`);
-  };
-
-  // Add individual activity into saved schedule for future "leg" page
-  const handleSaveActivity = (activity) => {
-    const tripLegs = JSON.parse(localStorage.getItem("tripLegs")) || [];
-
-    let leg = tripLegs.find((l) => l.name === cityName);
+    let leg = tripLegs.find((l) => l.name === destination.name);
 
     if (!leg) {
-      // auto-create leg if user adds activity before adding city
       leg = {
-        ...destination,
+        name: destination.name,
+        description: destination.description,
+        activities: destination.activities,
         plannedActivities: [],
         startDate: "",
-        endDate: "",    // required for date-range scheduling
-        activities: activities // ensure activities still exist
+        endDate: ""
       };
       tripLegs.push(leg);
     }
 
-    // avoid duplicates
-    const exists = leg.plannedActivities?.some(
-      (a) => a.title === activity.title && a.start === activity.start
-    );
+    // Convert recommended start/end → duration
+    const startMin = parseTime(activity.start);
+    const endMin = parseTime(activity.end);
+    const duration = Math.min(Math.max(endMin - startMin, 30), 240);
 
-    if (!exists) {
-      const newActivity = {
-        ...activity,
-        date: "" // user will set this in TripLeg
-      };
-    
-      leg.plannedActivities = [...(leg.plannedActivities || []), newActivity];
-      localStorage.setItem("tripLegs", JSON.stringify(tripLegs));
-    
-      alert(`Saved activity: ${activity.title}`);
-    }
+    const newAct = {
+      title: activity.title,
+      description: activity.description,
+      start: activity.start,   // Placeholder — TripLeg replaces this
+      duration,
+      date: ""                  // User assigns date in TripLeg
+    };
+
+    leg.plannedActivities.push(newAct);
+    localStorage.setItem("tripLegs", JSON.stringify(tripLegs));
+
+    alert(`Added "${activity.title}" to your itinerary`);
   };
 
   return (
     <Container className="mt-4">
-      <Row>
-        <Col md={6}>
-          <img src={image} alt={cityName} className="img-fluid rounded shadow" />
-        </Col>
+      <Button variant="secondary" onClick={() => navigate("/destinations")}>
+        ← Back to Destinations
+      </Button>
 
-        <Col md={6}>
-          <h2>{cityName}, {country}</h2>
-          <p>{description}</p>
+      <h2 className="mt-3">{destination.name}</h2>
 
-          <h5>General Info</h5>
-          <ListGroup className="mb-3">
-            <ListGroup.Item><strong>Distance from Madison:</strong> {distanceFromMadison.miles} miles — {distanceFromMadison.travelTime}</ListGroup.Item>
-            <ListGroup.Item><strong>Distance from City Center:</strong> {distanceFromCityCenter}</ListGroup.Item>
-            <ListGroup.Item><strong>Price:</strong> {price}</ListGroup.Item>
-            <ListGroup.Item><strong>Annual Visitors:</strong> {annualVisitors.toLocaleString()}</ListGroup.Item>
-            <ListGroup.Item><strong>Best Season:</strong> {bestSeason}</ListGroup.Item>
-            <ListGroup.Item><strong>Best Time of Day:</strong> {bestTimeOfDay}</ListGroup.Item>
-            <ListGroup.Item><strong>Effort Level:</strong> {effortLevel}</ListGroup.Item>
-          </ListGroup>
-
-          <Button variant="success" onClick={handleAddToTrip}>
-            Add Entire Destination to Itinerary
-          </Button>
-        </Col>
-      </Row>
+      <p>{destination.description}</p>
 
       <hr />
 
-      <h4 className="mt-4">Activities With Time Ranges</h4>
-      <Row>
-        {activities.map((act, i) => (
-          <Col md={6} key={i} className="mb-3">
-            <Card className="shadow-sm">
-              <Card.Body>
-                <Card.Title>{act.title}</Card.Title>
-                <Card.Subtitle className="mb-2 text-muted">
-                  {act.start} – {act.end}
-                </Card.Subtitle>
-                <Card.Text>{act.description}</Card.Text>
+      <h3>Activities</h3>
 
-                <Button
-                  variant="primary"
-                  onClick={() => handleSaveActivity(act)}
-                >
-                  Save Activity to Itinerary
-                </Button>
-              </Card.Body>
-            </Card>
-          </Col>
-        ))}
+      <Row>
+        {destination.activities.map((act, i) => {
+          const recommendedMin = parseTime(act.end) - parseTime(act.start);
+          const duration = Math.min(Math.max(recommendedMin, 30), 240);
+
+          return (
+            <Col md={6} key={i} className="mb-4">
+              <Card className="shadow-sm">
+                <Card.Body>
+                  <Card.Title>{act.title}</Card.Title>
+
+                  <Card.Subtitle className="mb-2 text-muted">
+                    ({Math.round((duration / 60) * 10) / 10} hours recommended)
+                  </Card.Subtitle>
+
+                  <Card.Text>{act.description}</Card.Text>
+
+                  <Button
+                    variant="primary"
+                    onClick={() => saveActivityToTrip(act)}
+                  >
+                    Add to Trip
+                  </Button>
+                </Card.Body>
+              </Card>
+            </Col>
+          );
+        })}
       </Row>
     </Container>
   );
