@@ -2,6 +2,7 @@ import { useParams, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
 import { Container, Row, Col, Card, Button, Form } from "react-bootstrap";
 import ActivityBlock from "../components/ActivityBlock";
+import AddCustomActivityModal from "../components/AddCustomActivityModal";
 
 // =====================================================
 // TIME HELPERS
@@ -39,6 +40,7 @@ export default function TripLeg() {
   const [schedule, setSchedule] = useState([]);
   const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
   const [allDates, setAllDates] = useState([]);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   // =====================================================
   // LOAD LEG + MIGRATE OLD START/END INTO DURATION MODEL
@@ -242,7 +244,22 @@ export default function TripLeg() {
   // RENDER
   // =====================================================
   if (!leg) return null;
-
+  const handleSaveCustomActivity = (activity) => {
+    const updatedLeg = {
+      ...leg,
+      activities: [...(leg.activities || []), activity]
+    };
+  
+    setLeg(updatedLeg);
+  
+    // Update stored tripLegs
+    const stored = JSON.parse(localStorage.getItem("tripLegs")) || [];
+    const updatedStorage = stored.map((l) =>
+      l.name === leg.name ? updatedLeg : l
+    );
+  
+    localStorage.setItem("tripLegs", JSON.stringify(updatedStorage));
+  };
   return (
     <Container className="mt-4">
       <Button variant="secondary" onClick={() => navigate("/builder")}>
@@ -257,27 +274,50 @@ export default function TripLeg() {
           <h4>Trip Date Range</h4>
 
           <Row>
-            <Col md={4}>
-              <Form.Label>Start Date</Form.Label>
-              <Form.Control
-                type="date"
-                value={leg.startDate || ""}
-                onChange={(e) =>
-                  updateLeg({ ...leg, startDate: e.target.value })
-                }
-              />
+          <Col md={4}>
+            <Form.Label>Start Date</Form.Label>
+
+            <div className="d-flex align-items-center" style={{ gap: "8px" }}>
+                <i
+                    className="bi bi-calendar-event"
+                    style={{ fontSize: "1.4rem", color: "#c5050c", cursor: "pointer" }}
+                    onClick={() => document.getElementById("startDateInput").showPicker()}
+                ></i>
+
+                <Form.Control
+                    id="startDateInput"
+                    type="date"
+                    value={leg.startDate || ""}
+                    onChange={(e) =>
+                    updateLeg({ ...leg, startDate: e.target.value })
+                    }
+                />
+            </div>
+
             </Col>
 
+
             <Col md={4}>
-              <Form.Label>End Date</Form.Label>
-              <Form.Control
-                type="date"
-                value={leg.endDate || ""}
-                onChange={(e) =>
-                  updateLeg({ ...leg, endDate: e.target.value })
-                }
-              />
+                <Form.Label>End Date</Form.Label>
+
+                <div className="d-flex align-items-center" style={{ gap: "8px" }}>
+                    <i
+                    className="bi bi-calendar-event"
+                    style={{ fontSize: "1.4rem", color: "#c5050c", cursor: "pointer" }}
+                    onClick={() => document.getElementById("endDateInput").showPicker?.()}
+                    ></i>
+
+                    <Form.Control
+                    id="endDateInput"
+                    type="date"
+                    value={leg.endDate || ""}
+                    onChange={(e) =>
+                        updateLeg({ ...leg, endDate: e.target.value })
+                    }
+                    />
+                </div>
             </Col>
+
           </Row>
         </Card.Body>
       </Card>
@@ -337,6 +377,14 @@ export default function TripLeg() {
                   </Card>
                 );
               })}
+              <Button 
+                variant="success"
+                className="mb-3"
+                onClick={() => setShowAddModal(true)}
+                >
+                ➕ Add Custom Activity
+                </Button>
+
             </Card.Body>
           </Card>
         </Col>
@@ -452,6 +500,12 @@ export default function TripLeg() {
           </Card>
         </Col>
       </Row>
+      <AddCustomActivityModal
+        show={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSave={handleSaveCustomActivity}
+        />
+
     </Container>
   );
 }

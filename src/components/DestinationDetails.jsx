@@ -23,44 +23,7 @@ export default function DestinationDetails({ destinations }) {
 
   if (!destination) return <p>Destination not found.</p>;
 
-  // Save activity into tripLegs (duration-based now)
-  const saveActivityToTrip = (activity) => {
-    const tripLegs = JSON.parse(localStorage.getItem("tripLegs")) || [];
-
-    let leg = tripLegs.find((l) => l.name === destination.name);
-
-    if (!leg) {
-      leg = {
-        name: destination.name,
-        description: destination.description,
-        activities: destination.activities,
-        plannedActivities: [],
-        startDate: "",
-        endDate: "",
-        image: destination.image,          // <-- REQUIRED FOR ITIN BUILDER
-        country: destination.country       // optional but useful
-      };      
-      tripLegs.push(leg);
-    }
-
-    // Convert recommended start/end → duration
-    const startMin = parseTime(activity.start);
-    const endMin = parseTime(activity.end);
-    const duration = Math.min(Math.max(endMin - startMin, 30), 240);
-
-    const newAct = {
-      title: activity.title,
-      description: activity.description,
-      start: activity.start,   // Placeholder — TripLeg replaces this
-      duration,
-      date: ""                  // User assigns date in TripLeg
-    };
-
-    leg.plannedActivities.push(newAct);
-    localStorage.setItem("tripLegs", JSON.stringify(tripLegs));
-
-    alert(`Added "${activity.title}" to your itinerary`);
-  };
+  
   const addWholeDestinationToTrip = () => {
     const tripLegs = JSON.parse(localStorage.getItem("tripLegs")) || [];
   
@@ -103,7 +66,7 @@ export default function DestinationDetails({ destinations }) {
         className="mt-3 mb-3"
         onClick={addWholeDestinationToTrip}
       >
-        ➕ Add Entire Destination to Itinerary
+        ➕ Add Destination to Itinerary
       </Button>
       <p>{destination.description}</p>
 
@@ -128,12 +91,7 @@ export default function DestinationDetails({ destinations }) {
 
                   <Card.Text>{act.description}</Card.Text>
 
-                  <Button
-                    variant="primary"
-                    onClick={() => saveActivityToTrip(act)}
-                  >
-                    Add to Trip
-                  </Button>
+                  
                 </Card.Body>
               </Card>
             </Col>
