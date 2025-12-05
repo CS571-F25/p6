@@ -19,11 +19,13 @@ export default function AddCustomActivityModal({
     }
 
     onSave({
-      title,
-      description,
-      start,
-      end
+        title,
+        description,
+        start,
+        end,
+        isCustom: true
     });
+
 
     // Reset form
     setTitle("");

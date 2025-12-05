@@ -66,7 +66,7 @@ export default function TripLeg() {
       const e = parseTime(a.end);
       return {
         ...a,
-        duration: Math.min(Math.max(e - s, 30), 240),
+        duration: Math.min(Math.max(e - s, 30), 480),
       };
     });
 
@@ -260,6 +260,30 @@ export default function TripLeg() {
   
     localStorage.setItem("tripLegs", JSON.stringify(updatedStorage));
   };
+  const deleteCustomActivity = (activityTitle) => {
+    const filtered = leg.activities.filter(a => a.title !== activityTitle);
+  
+    const updatedLeg = {
+      ...leg,
+      activities: filtered
+    };
+  
+    setLeg(updatedLeg);
+  
+    // Clean schedule of that activity title
+    const cleanedSchedule = schedule.filter(a => a.title !== activityTitle);
+    saveSchedule(cleanedSchedule);
+  
+    // Persist
+    const stored = JSON.parse(localStorage.getItem("tripLegs")) || [];
+    const updatedStorage = stored.map((l) =>
+      l.name === leg.name ? updatedLeg : l
+    );
+  
+    localStorage.setItem("tripLegs", JSON.stringify(updatedStorage));
+  };
+  
+  
   return (
     <Container className="mt-4">
       <Button variant="secondary" onClick={() => navigate("/builder")}>
@@ -331,50 +355,67 @@ export default function TripLeg() {
 
               {(leg.activities || []).map((act, i) => {
                 const recMin = parseTime(act.end) - parseTime(act.start);
-                const duration = Math.min(Math.max(recMin, 30), 240);
+                const duration = Math.min(Math.max(recMin, 30), 480);
 
                 return (
-                  <Card key={i} className="mb-3">
-                    <Card.Body>
-                      <Card.Title>{act.title}</Card.Title>
+                    <Card key={i} className="mb-3">
+                        <Card.Body>
+                        <Card.Title className="d-flex justify-content-between align-items-center">
+                            {act.title}
 
-                      <Card.Subtitle className="mb-2 text-muted">
-                        ({Math.round((duration / 60) * 10) / 10} hours recommended)
-                      </Card.Subtitle>
-
-                      <Card.Text>{act.description}</Card.Text>
-
-                      <Form.Label>Assign Date</Form.Label>
-                      <Form.Select
-                        onChange={(e) => {
-                          const selected = e.target.value;
-                          if (!selected) return;
-
-                          const start = findEarliestStart(selected, duration);
-
-                          const newAct = {
-                            title: act.title,
-                            description: act.description,
-                            start,
-                            duration,
-                            date: selected,
-                          };
-
-                          saveSchedule([...schedule, newAct]);
-                        }}
-                      >
-                        <option value="">Select Date</option>
-                        {allDates.map((d) => {
-                          const iso = toISODate(d);
-                          return (
-                            <option key={iso} value={iso}>
-                              {iso}
-                            </option>
-                          );
-                        })}
-                      </Form.Select>
-                    </Card.Body>
-                  </Card>
+                            {/* SHOW DELETE ONLY FOR CUSTOM ACTIVITIES */}
+                            {act.isCustom && (
+                                <button
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={() => {
+                                    if (window.confirm(`Delete custom activity "${act.title}"?`)) {
+                                    deleteCustomActivity(act.title);
+                                    }
+                                }}
+                                >
+                                X
+                                </button>
+                            )}
+                        </Card.Title>
+                    
+                        <Card.Subtitle className="mb-2 text-muted">
+                            ({Math.round((duration / 60) * 10) / 10} hours recommended)
+                        </Card.Subtitle>
+                    
+                        <Card.Text>{act.description}</Card.Text>
+                    
+                        <Form.Label>Assign Date</Form.Label>
+                        <Form.Select
+                            onChange={(e) => {
+                            const selected = e.target.value;
+                            if (!selected) return;
+                    
+                            const start = findEarliestStart(selected, duration);
+                    
+                            const newAct = {
+                                title: act.title,
+                                description: act.description,
+                                start,
+                                duration,
+                                date: selected,
+                            };
+                    
+                            saveSchedule([...schedule, newAct]);
+                            }}
+                        >
+                            <option value="">Select Date</option>
+                            {allDates.map((d) => {
+                            const iso = toISODate(d);
+                            return (
+                                <option key={iso} value={iso}>
+                                {iso}
+                                </option>
+                            );
+                            })}
+                        </Form.Select>
+                        </Card.Body>
+                    </Card>
+                  
                 );
               })}
               <Button 

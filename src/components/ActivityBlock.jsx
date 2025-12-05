@@ -229,7 +229,7 @@ export default function ActivityBlock({
           style={buttonStyle}
           onClick={(e) => {
             e.stopPropagation();
-            const newDur = Math.min(activity.duration + 30, 240);
+            const newDur = Math.min(activity.duration + 30, 480);
             onUpdate({ ...activity, duration: newDur });
           }}
         >

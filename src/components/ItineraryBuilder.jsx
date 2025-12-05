@@ -57,13 +57,18 @@ export default function ItineraryBuilder() {
                     onChange={(e) => handleNoteChange(dest.name, e.target.value)}
                   />
                   <Button
+                    style={{ paddingLeft: "15px", paddingRight: "15px"}}
                     as={Link}
                     to={`/builder/leg/${dest.name.toLowerCase().replace(/\s+/g, "-")}`}
+                    className="mt-3"
+
                     variant="primary"
                   >
                     Open Trip Leg
                   </Button>
                   <Button
+                    style={{ paddingLeft: "15px", paddingRight: "15px", marginLeft: "10px"}}
+
                     variant="danger"
                     className="mt-3"
                     onClick={() => handleRemove(dest.name)}

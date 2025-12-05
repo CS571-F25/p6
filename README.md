@@ -14,3 +14,31 @@ The React Compiler is not enabled on this template because of its impact on dev 
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+Known Bugs / Limitations
+
+This project is still in development and includes several known issues:
+
+⚠️ Date Selection Issues
+
+The date pickers in the Trip Leg planner can behave inconsistently.
+
+Start/end date updates occasionally cause temporary visual glitches or misalignment.
+
+⚠️ Unlimited Downward Drag
+
+Activities in the timeline can be dragged downward past the intended schedule boundary.
+
+Lower vertical limits are not enforced.
+
+⚠️ Schedule Lines Misaligned
+
+The visual hour grid does not always align perfectly with the calculated start times of activities.
+
+Minor differences in positioning accumulate due to pixel rounding and scaling.
+
+⚠️ Off-by-One Error Between Builder and Schedule
+
+The itinerary builder date range and the Trip Leg schedule sometimes differ by one day.
+
+

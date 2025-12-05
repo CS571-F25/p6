@@ -155,14 +155,14 @@ export default function AboutMe() {
           fontSize: "1.3rem",
           color: "#333",
           marginBottom: "30px",
-          animation: "typing 3s steps(40, end), blink .75s step-end infinite",
+          animation: "typing 3s steps(20, end), blink .75s step-end infinite",
           whiteSpace: "nowrap",
           overflow: "hidden",
           borderRight: "3px solid #c5050c",
           display: "inline-block",
         }}
       >
-        We are two students in UW–Madison’s CS571.
+        We are two students in UW–Madison’s CS571. Try to press the egg to reveal a secret!
       </p>
 
       {/* THE EGG */}
