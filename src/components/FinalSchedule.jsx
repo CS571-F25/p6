@@ -15,11 +15,12 @@ const minutesToTime = (total) => {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 };
 
-// Local safe date formatting (prevents timezone drift)
+// Local safe date formatting
 const toISODate = (date) => date.toLocaleDateString("en-CA");
 
 export default function FinalSchedule() {
   const [allActivities, setAllActivities] = useState([]);
+  const [statusMessage, setStatusMessage] = useState("");
 
   // -----------------------------
   // LOAD ALL ACTIVITIES FROM TRIP LEGS
@@ -31,7 +32,6 @@ export default function FinalSchedule() {
     legs.forEach((leg) => {
       (leg.plannedActivities || []).forEach((a) => {
         if (!a.date) return;
-
         merged.push({
           legName: leg.name,
           title: a.title,
@@ -43,7 +43,6 @@ export default function FinalSchedule() {
       });
     });
 
-    // Sort chronologically
     merged.sort((a, b) => {
       if (a.date === b.date) return a.start.localeCompare(b.start);
       return a.date.localeCompare(b.date);
@@ -85,14 +84,19 @@ export default function FinalSchedule() {
           )
       )
     );
+
+    setStatusMessage(`Deleted activity: ${activity.title}`);
   };
 
   // -----------------------------
   // CLEAR ALL ACTIVITIES
   // -----------------------------
   const clearAll = () => {
-    if (!window.confirm("Are you sure you want to DELETE ALL activities?"))
-      return;
+    const confirmed = window.confirm(
+      "Are you sure you want to DELETE ALL activities?"
+    );
+
+    if (!confirmed) return;
 
     const legs = JSON.parse(localStorage.getItem("tripLegs")) || [];
 
@@ -103,10 +107,12 @@ export default function FinalSchedule() {
 
     localStorage.setItem("tripLegs", JSON.stringify(cleared));
     setAllActivities([]);
+
+    setStatusMessage("All activities have been cleared.");
   };
 
   // -----------------------------
-  // GROUP ACTIVITIES BY DATE
+  // GROUP BY DATE
   // -----------------------------
   const grouped = allActivities.reduce((acc, act) => {
     if (!acc[act.date]) acc[act.date] = [];
@@ -115,64 +121,90 @@ export default function FinalSchedule() {
   }, {});
 
   return (
-    <Container className="mt-4">
-      <h2>Final Trip Schedule</h2>
-      <p>Your fully assembled itinerary, grouped by day.</p>
+    <main role="main">
+      <Container className="mt-4">
+        <h1>Final Trip Schedule</h1>
+        <p id="schedule-desc">
+          Your fully assembled itinerary, grouped by day.
+        </p>
 
-      {allActivities.length > 0 && (
-        <Button variant="danger" className="mb-3" onClick={clearAll}>
-          Clear All Activities
-        </Button>
-      )}
+        {/* Screen reader announcements */}
+        <div role="status" aria-live="polite" className="visually-hidden">
+          {statusMessage}
+        </div>
 
-      {Object.keys(grouped).length === 0 && (
-        <p>No scheduled activities yet.</p>
-      )}
+        {allActivities.length > 0 && (
+          <Button
+            variant="danger"
+            className="mb-3"
+            onClick={clearAll}
+            aria-label="Clear all scheduled activities"
+          >
+            Clear All Activities
+          </Button>
+        )}
 
-      {Object.keys(grouped).map((date) => (
-        <Card key={date} className="mb-4 shadow-sm">
-          <Card.Body>
-            <h4>
-              {new Date(date).toLocaleDateString("en-US", {
-                weekday: "long",
-                month: "short",
-                day: "numeric"
-              })}
-            </h4>
+        {Object.keys(grouped).length === 0 && (
+          <p role="alert" aria-live="polite">
+            No scheduled activities yet.
+          </p>
+        )}
 
-            <ListGroup>
-              {grouped[date].map((act, i) => {
-                const startMin = parseTime(act.start);
-                const endMin = startMin + act.duration;
-                const end = minutesToTime(endMin);
+        {Object.keys(grouped).map((date) => (
+          <Card
+            key={date}
+            className="mb-4 shadow-sm"
+            as="section"
+            aria-labelledby={`day-heading-${date}`}
+          >
+            <Card.Body>
+              <h2
+                id={`day-heading-${date}`}
+                style={{ fontSize: "1.4rem" }}
+              >
+                {new Date(date).toLocaleDateString("en-US", {
+                  weekday: "long",
+                  month: "short",
+                  day: "numeric"
+                })}
+              </h2>
 
-                return (
-                  <ListGroup.Item
-                    key={i}
-                    className="d-flex justify-content-between align-items-center"
-                  >
-                    <div>
-                      <strong>
-                        {act.start}–{end}
-                      </strong>{" "}
-                      — {act.title}{" "}
-                      <em style={{ opacity: 0.7 }}>({act.legName})</em>
-                    </div>
+              <ListGroup>
+                {grouped[date].map((act, i) => {
+                  const startMin = parseTime(act.start);
+                  const endMin = startMin + act.duration;
+                  const end = minutesToTime(endMin);
 
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => deleteActivity(act)}
+                  return (
+                    <ListGroup.Item
+                      key={i}
+                      className="d-flex justify-content-between align-items-center"
+                      aria-label={`${act.title}, from ${act.start} to ${end}, part of ${act.legName}`}
                     >
-                      Delete
-                    </Button>
-                  </ListGroup.Item>
-                );
-              })}
-            </ListGroup>
-          </Card.Body>
-        </Card>
-      ))}
-    </Container>
+                      <div>
+                        <strong>
+                          {act.start}–{end}
+                        </strong>{" "}
+                        — {act.title}{" "}
+                        <em style={{ opacity: 0.7 }}>({act.legName})</em>
+                      </div>
+
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => deleteActivity(act)}
+                        aria-label={`Delete activity: ${act.title} on ${act.date}`}
+                      >
+                        Delete
+                      </Button>
+                    </ListGroup.Item>
+                  );
+                })}
+              </ListGroup>
+            </Card.Body>
+          </Card>
+        ))}
+      </Container>
+    </main>
   );
 }

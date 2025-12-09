@@ -4,13 +4,19 @@ export default function AboutMe() {
   const [showSecret, setShowSecret] = useState(false);
   const [fakeKey, setFakeKey] = useState("");
   const [eggPos, setEggPos] = useState({ x: 300, y: 300 });
+  const [status, setStatus] = useState("");
 
   const posRef = useRef({ x: 300, y: 300 });
   const mouseRef = useRef({ x: 0, y: 0 });
   const requestRef = useRef(null);
 
   const movementEnabled = useRef(true);
-  const caughtRef = useRef(false); // NEW — tracks whether egg is caught
+  const caughtRef = useRef(false);
+
+  // Accessibility: detect prefers-reduced-motion
+  const prefersReducedMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)"
+  ).matches;
 
   // Movement settings
   const dangerRadius = 450;
@@ -20,7 +26,8 @@ export default function AboutMe() {
 
   // Fake key generator
   const generateFakeKey = () => {
-    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const chars =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     let out = "sk-";
     for (let i = 0; i < 40; i++) {
       out += chars[Math.floor(Math.random() * chars.length)];
@@ -28,7 +35,6 @@ export default function AboutMe() {
     return out;
   };
 
-  // Random spawn function (used for reset too)
   const spawnEgg = () => {
     const x = Math.random() * (window.innerWidth - 100) + 50;
     const y = Math.random() * (window.innerHeight - 100) + 50;
@@ -39,41 +45,39 @@ export default function AboutMe() {
   useEffect(() => spawnEgg(), []);
 
   const handleMouseMove = (e) => {
+    if (prefersReducedMotion) return; // no chasing
     mouseRef.current = { x: e.clientX, y: e.clientY };
   };
 
-  // Freeze but DON'T catch
   const freezeMovement = () => {
     movementEnabled.current = false;
   };
 
-  // F5 freezes the egg so you can click it
   useEffect(() => {
-    const handleKey = (e) => {
+    const onKey = (e) => {
       if (e.key === "F5") {
         e.preventDefault();
         freezeMovement();
+        setStatus("Movement frozen. You can now catch the egg.");
       }
     };
-
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // RESET THE GAME after egg has been caught
   const resetGame = () => {
     movementEnabled.current = true;
     caughtRef.current = false;
     setShowSecret(false);
     setFakeKey("");
     spawnEgg();
+    setStatus("Game reset.");
 
-    // restart animation loop
     requestRef.current = requestAnimationFrame(animate);
   };
 
   const animate = () => {
-    if (!movementEnabled.current) return;
+    if (!movementEnabled.current || prefersReducedMotion) return;
 
     const mouse = mouseRef.current;
     const pos = posRef.current;
@@ -93,7 +97,6 @@ export default function AboutMe() {
       let newX = pos.x + nx * speed;
       let newY = pos.y + ny * speed;
 
-      // Screen wrap
       const w = window.innerWidth;
       const h = window.innerHeight;
 
@@ -104,7 +107,7 @@ export default function AboutMe() {
 
       posRef.current = {
         x: pos.x + (newX - pos.x) * easing,
-        y: pos.y + (newY - pos.y) * easing,
+        y: pos.y + (newY - pos.y) * easing
       };
 
       setEggPos(posRef.current);
@@ -114,22 +117,21 @@ export default function AboutMe() {
   };
 
   useEffect(() => {
-    requestRef.current = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(requestRef.current);
-  }, []);
+    if (!prefersReducedMotion) {
+      requestRef.current = requestAnimationFrame(animate);
+      return () => cancelAnimationFrame(requestRef.current);
+    }
+  }, [prefersReducedMotion]);
 
-  // CLICK LOGIC:
-  // 1st click → catch egg
-  // 2nd+ click → reset game
   const handleEggClick = () => {
     if (!caughtRef.current) {
-      // FIRST CLICK → CATCH
       caughtRef.current = true;
       movementEnabled.current = false;
-      setFakeKey(generateFakeKey());
+      const key = generateFakeKey();
+      setFakeKey(key);
       setShowSecret(true);
+      setStatus("You caught the egg! Secret revealed.");
     } else {
-      // SECOND CLICK → RESET
       resetGame();
     }
   };
@@ -142,32 +144,38 @@ export default function AboutMe() {
         maxWidth: "800px",
         margin: "0 auto",
         textAlign: "center",
-        fontFamily: "Inter, sans-serif",
-        minHeight: "120vh",
+        minHeight: "120vh"
       }}
     >
-      <h1 style={{ fontSize: "2.5rem", color: "#c5050c", fontWeight: "800" }}>
-        About Us
-      </h1>
+      {/* Screen reader status messages */}
+      <div aria-live="polite" className="visually-hidden">
+        {status}
+      </div>
 
+      <h1>About Us</h1>
+
+      {/* Typing effect is decorative, so screen readers get plain text */}
       <p
+        aria-label="We are two students in UW–Madison’s CS571. Try to press the egg to reveal a secret."
         style={{
           fontSize: "1.3rem",
           color: "#333",
-          marginBottom: "30px",
-          animation: "typing 3s steps(20, end), blink .75s step-end infinite",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          borderRight: "3px solid #c5050c",
-          display: "inline-block",
+          marginBottom: "30px"
         }}
       >
-        We are two students in UW–Madison’s CS571. Try to press the egg to reveal a secret!
+        <span aria-hidden="true">
+          We are two students in UW–Madison’s CS571. Try to press the egg to reveal a secret!
+        </span>
       </p>
 
-      {/* THE EGG */}
+      {/* The Egg (interactive button) */}
       <button
         onClick={handleEggClick}
+        aria-label={
+          !caughtRef.current
+            ? "Catch the egg to reveal a secret"
+            : "Secret shown. Click again to reset the game"
+        }
         style={{
           position: "fixed",
           left: eggPos.x + "px",
@@ -182,7 +190,7 @@ export default function AboutMe() {
           fontWeight: "700",
           fontSize: "1.3rem",
           boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
-          zIndex: 9999,
+          zIndex: 9999
         }}
       >
         🥚
@@ -190,7 +198,10 @@ export default function AboutMe() {
 
       {showSecret && (
         <div style={{ marginTop: "60px", fontSize: "1.2rem", color: "#444" }}>
-          <p>🔮 <em>You caught the egg!</em></p>
+          <p>
+            🔮 <em>You caught the egg!</em>
+          </p>
+
           <p>Here is an OpenAI API key:</p>
 
           <pre
@@ -200,7 +211,7 @@ export default function AboutMe() {
               background: "#f4f4f4",
               borderRadius: "8px",
               display: "inline-block",
-              fontSize: "1.1rem",
+              fontSize: "1.1rem"
             }}
           >
             {fakeKey}
@@ -211,19 +222,6 @@ export default function AboutMe() {
           </p>
         </div>
       )}
-
-      <style>
-        {`
-          @keyframes typing {
-            from { width: 0 }
-            to { width: 100% }
-          }
-          @keyframes blink {
-            from, to { border-color: transparent }
-            50% { border-color: #c5050c; }
-          }
-        `}
-      </style>
     </div>
   );
 }

@@ -9,76 +9,106 @@ export default function ItineraryBuilder() {
   useEffect(() => {
     const storedLegs = JSON.parse(localStorage.getItem("tripLegs")) || [];
     setSavedDestinations(storedLegs);
-  
+
     const storedNotes = JSON.parse(localStorage.getItem("notes")) || {};
     setNotes(storedNotes);
   }, []);
+
   const handleNoteChange = (name, text) => {
     const updated = { ...notes, [name]: text };
     setNotes(updated);
     localStorage.setItem("notes", JSON.stringify(updated));
   };
-  
 
   const handleRemove = (name) => {
-    // Remove from the correct store!
     const legs = JSON.parse(localStorage.getItem("tripLegs")) || [];
     const updatedLegs = legs.filter((l) => l.name !== name);
     localStorage.setItem("tripLegs", JSON.stringify(updatedLegs));
-  
-    // Update UI list
     setSavedDestinations(updatedLegs);
   };
-  
 
   return (
     <Container className="mt-4">
-      <h2>Itinerary Builder</h2>
-      <p>Organize your saved destinations and add your own notes.</p>
+      <h1 className="mb-3">Itinerary Builder</h1>
+      <p id="builder-desc">
+        Organize your saved destinations and add personal notes.
+      </p>
 
-      <Row>
+      <Row aria-describedby="builder-desc">
         {savedDestinations.length === 0 ? (
-          <p>No destinations saved yet. Visit a destination and click *Add to Trip*.</p>
+          <div
+            role="alert"
+            aria-live="polite"
+            className="mt-3"
+          >
+            No destinations saved yet. Visit a destination and click 
+            <strong> Add to Trip</strong>.
+          </div>
         ) : (
-          savedDestinations.map((dest, index) => (
-            <Col md={6} key={index} className="mb-4">
-              <Card className="shadow-sm">
-                <Card.Img src={dest.image} alt={dest.name} />
-                <Card.Body>
-                  <Card.Title>{dest.name}, {dest.country}</Card.Title>
-                  <Card.Text>{dest.description}</Card.Text>
+          savedDestinations.map((dest, index) => {
+            const slug = dest.name.toLowerCase().replace(/\s+/g, "-");
+            const noteId = `notes-${slug}`;
 
-                  <h6>Your Notes</h6>
-                  <Form.Control
-                    as="textarea"
-                    rows={3}
-                    placeholder="Add notes, plans, or reminders..."
-                    value={notes[dest.name] || ""}
-                    onChange={(e) => handleNoteChange(dest.name, e.target.value)}
+            return (
+              <Col md={6} key={index} className="mb-4">
+                <Card className="shadow-sm h-100">
+                  <Card.Img
+                    src={dest.image}
+                    alt={dest.altText || `${dest.name} in ${dest.country}`}
                   />
-                  <Button
-                    style={{ paddingLeft: "15px", paddingRight: "15px"}}
-                    as={Link}
-                    to={`/builder/leg/${dest.name.toLowerCase().replace(/\s+/g, "-")}`}
-                    className="mt-3"
 
-                    variant="primary"
-                  >
-                    Open Trip Leg
-                  </Button>
-                  <Button
-                    style={{ paddingLeft: "15px", paddingRight: "15px", marginLeft: "10px"}}
+                  <Card.Body>
+                    <Card.Title as="h2" style={{ fontSize: "1.25rem" }}>
+                      {dest.name}, {dest.country}
+                    </Card.Title>
 
-                    variant="danger"
-                    className="mt-3"
-                    onClick={() => handleRemove(dest.name)}
-                  >
-                    Remove
-                  </Button>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))
+                    <Card.Text>{dest.description}</Card.Text>
+
+                    {/* Notes Label */}
+                    <Form.Group className="mb-3">
+                      <Form.Label htmlFor={noteId}>
+                        Your Notes for {dest.name}
+                      </Form.Label>
+
+                      <Form.Control
+                        id={noteId}
+                        as="textarea"
+                        rows={3}
+                        placeholder="Add notes, plans, or reminders..."
+                        value={notes[dest.name] || ""}
+                        onChange={(e) =>
+                          handleNoteChange(dest.name, e.target.value)
+                        }
+                      />
+                    </Form.Group>
+
+                    {/* Open Trip Leg Button */}
+                    <Button
+                      as={Link}
+                      to={`/builder/leg/${slug}`}
+                      variant="primary"
+                      className="mt-2"
+                      aria-label={`Open trip leg details for ${dest.name}`}
+                      style={{ paddingInline: "15px" }}
+                    >
+                      Open Trip Leg
+                    </Button>
+
+                    {/* Remove Button */}
+                    <Button
+                      variant="danger"
+                      className="mt-2 ms-2"
+                      style={{ paddingInline: "15px" }}
+                      aria-label={`Remove ${dest.name} from itinerary`}
+                      onClick={() => handleRemove(dest.name)}
+                    >
+                      Remove
+                    </Button>
+                  </Card.Body>
+                </Card>
+              </Col>
+            );
+          })
         )}
       </Row>
     </Container>

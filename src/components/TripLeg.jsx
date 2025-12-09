@@ -18,16 +18,12 @@ const minutesToTime = (total) => {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 };
 
-// Convert "YYYY-MM-DD" to *local* Date safely
 const makeLocalDate = (iso) => {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d);
 };
 
-// Format Date → "YYYY-MM-DD" in local time (NO UTC SHIFT)
-const toISODate = (date) => {
-  return date.toLocaleDateString("en-CA");
-};
+const toISODate = (date) => date.toLocaleDateString("en-CA");
 
 // =====================================================
 // COMPONENT
@@ -43,30 +39,29 @@ export default function TripLeg() {
   const [showAddModal, setShowAddModal] = useState(false);
 
   // =====================================================
-  // LOAD LEG + MIGRATE OLD START/END INTO DURATION MODEL
+  // LOAD LEG (ACCESSIBLE ALERT IF NOT FOUND)
   // =====================================================
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("tripLegs")) || [];
     const found = stored.find(
       (l) => l.name.toLowerCase().replace(/\s+/g, "-") === legName
     );
-    if (!found.activities) {
-        found.activities = [];
-    }
 
     if (!found) {
+      alert("Trip leg not found.");
       navigate("/builder");
       return;
     }
 
+    if (!found.activities) found.activities = [];
+
     const migrated = (found.plannedActivities || []).map((a) => {
       if (a.duration != null) return a;
-
       const s = parseTime(a.start);
       const e = parseTime(a.end);
       return {
         ...a,
-        duration: Math.min(Math.max(e - s, 30), 480),
+        duration: Math.min(Math.max(e - s, 30), 480)
       };
     });
 
@@ -81,18 +76,18 @@ export default function TripLeg() {
   }, [legName, navigate]);
 
   // =====================================================
-  // GENERATE SAFE LOCAL DATE RANGE
+  // GENERATE DATE RANGE
   // =====================================================
   const generateDateRange = (start, end) => {
-    const dates = [];
-    let cur = makeLocalDate(start);
-    const endDate = makeLocalDate(end);
+    const arr = [];
+    let d = makeLocalDate(start);
+    const stop = makeLocalDate(end);
 
-    while (cur <= endDate) {
-      dates.push(new Date(cur));
-      cur.setDate(cur.getDate() + 1);
+    while (d <= stop) {
+      arr.push(new Date(d));
+      d.setDate(d.getDate() + 1);
     }
-    return dates;
+    return arr;
   };
 
   // =====================================================
@@ -100,37 +95,37 @@ export default function TripLeg() {
   // =====================================================
   const groupDatesIntoWeeks = (dates) => {
     const weeks = [];
-    let currentWeek = [];
+    let current = [];
 
     dates.forEach((date) => {
-      if (currentWeek.length === 0) {
+      if (current.length === 0) {
         const dow = (date.getDay() + 6) % 7;
-        currentWeek = new Array(dow).fill(null);
+        current = new Array(dow).fill(null);
       }
 
-      currentWeek.push(date);
+      current.push(date);
 
-      if (currentWeek.length === 7) {
-        weeks.push(currentWeek);
-        currentWeek = [];
+      if (current.length === 7) {
+        weeks.push(current);
+        current = [];
       }
     });
 
-    if (currentWeek.length > 0) {
-      while (currentWeek.length < 7) currentWeek.push(null);
-      weeks.push(currentWeek);
+    if (current.length > 0) {
+      while (current.length < 7) current.push(null);
+      weeks.push(current);
     }
 
     return weeks;
   };
 
   // =====================================================
-  // UPDATE LEG + CLEAN ACTIVITIES OUTSIDE RANGE
+  // UPDATE LEG (ACCESSIBLE DATE LABELS)
   // =====================================================
   const updateLeg = (updated) => {
     const corrected = { ...updated };
 
-    // Fix reversed dates
+    // Prevent reversed dates
     if (corrected.startDate && corrected.endDate) {
       if (corrected.startDate > corrected.endDate)
         corrected.endDate = corrected.startDate;
@@ -138,13 +133,12 @@ export default function TripLeg() {
         corrected.startDate = corrected.endDate;
     }
 
-    // Clean schedule
+    // Clean schedule out of range
     let cleaned = schedule;
     if (corrected.startDate && corrected.endDate) {
       cleaned = schedule.filter(
         (a) => a.date && a.date >= corrected.startDate && a.date <= corrected.endDate
       );
-
       setSchedule(cleaned);
 
       const stored = JSON.parse(localStorage.getItem("tripLegs")) || [];
@@ -176,19 +170,17 @@ export default function TripLeg() {
   // =====================================================
   const saveSchedule = (updated) => {
     const stored = JSON.parse(localStorage.getItem("tripLegs")) || [];
-
     const newLegs = stored.map((l) =>
       l.name === leg.name ? { ...l, plannedActivities: updated } : l
     );
-
     localStorage.setItem("tripLegs", JSON.stringify(newLegs));
     setSchedule(updated);
   };
 
   const updateActivity = (index, updated) => {
-    const newS = [...schedule];
-    newS[index] = updated;
-    saveSchedule(newS);
+    const copy = [...schedule];
+    copy[index] = updated;
+    saveSchedule(copy);
   };
 
   const removeActivity = (index) => {
@@ -196,29 +188,26 @@ export default function TripLeg() {
   };
 
   // =====================================================
-  // EARLIEST POSSIBLE NON-CONFLICTING START TIME
+  // EARLIEST TIME CALCULATOR
   // =====================================================
   const findEarliestStart = (date, duration) => {
     const acts = schedule
       .filter((a) => a.date === date)
       .sort((a, b) => parseTime(a.start) - parseTime(b.start));
 
-    let earliest = 6 * 60; // start of calendar day
+    let earliest = 6 * 60;
 
     for (let i = 0; i < acts.length; i++) {
       const a = acts[i];
       const aStart = parseTime(a.start);
       const aEnd = aStart + a.duration;
 
-      // If this activity fits before the next one:
       if (earliest + duration <= aStart) {
         return minutesToTime(earliest);
       }
-
       earliest = aEnd;
     }
 
-    // If no gap, place after last activity
     return minutesToTime(earliest);
   };
 
@@ -228,9 +217,6 @@ export default function TripLeg() {
   const HOURS = Array.from({ length: 17 }, (_, i) => 6 + i);
   const hourHeight = 60;
 
-  // =====================================================
-  // GROUP ACTIVITIES BY DATE
-  // =====================================================
   const weeks = groupDatesIntoWeeks(allDates);
   const currentWeek = weeks[currentWeekIndex] || [];
 
@@ -241,237 +227,293 @@ export default function TripLeg() {
   });
 
   // =====================================================
-  // RENDER
+  // ACCESSIBLE RENDER
   // =====================================================
   if (!leg) return null;
+
   const handleSaveCustomActivity = (activity) => {
     const updatedLeg = {
       ...leg,
       activities: [...(leg.activities || []), activity]
     };
-  
+
     setLeg(updatedLeg);
-  
-    // Update stored tripLegs
+
     const stored = JSON.parse(localStorage.getItem("tripLegs")) || [];
     const updatedStorage = stored.map((l) =>
       l.name === leg.name ? updatedLeg : l
     );
-  
     localStorage.setItem("tripLegs", JSON.stringify(updatedStorage));
   };
-  const deleteCustomActivity = (activityTitle) => {
-    const filtered = leg.activities.filter(a => a.title !== activityTitle);
-  
+
+  const deleteCustomActivity = (title) => {
+    const filtered = leg.activities.filter((a) => a.title !== title);
+
     const updatedLeg = {
       ...leg,
       activities: filtered
     };
-  
+
     setLeg(updatedLeg);
-  
-    // Clean schedule of that activity title
-    const cleanedSchedule = schedule.filter(a => a.title !== activityTitle);
+
+    const cleanedSchedule = schedule.filter((a) => a.title !== title);
     saveSchedule(cleanedSchedule);
-  
-    // Persist
+
     const stored = JSON.parse(localStorage.getItem("tripLegs")) || [];
     const updatedStorage = stored.map((l) =>
       l.name === leg.name ? updatedLeg : l
     );
-  
     localStorage.setItem("tripLegs", JSON.stringify(updatedStorage));
   };
-  
-  
+
   return (
-    <Container className="mt-4">
-      <Button variant="secondary" onClick={() => navigate("/builder")}>
+    <Container className="mt-4" role="main" aria-label="Trip leg scheduler">
+      {/* Back Button */}
+      <Button
+        variant="secondary"
+        onClick={() => navigate("/builder")}
+        aria-label="Go back to Itinerary Builder"
+      >
         ← Back to Itinerary Builder
       </Button>
 
-      <h2 className="mt-3">{leg.name} — Trip Schedule</h2>
+      <h1 className="mt-3">{leg.name} — Trip Schedule</h1>
 
-      {/* DATE RANGE */}
+      {/* --------------------- DATE RANGE ---------------------- */}
       <Card className="shadow-sm mb-4">
         <Card.Body>
-          <h4>Trip Date Range</h4>
+          <h2>Trip Date Range</h2>
 
           <Row>
-          <Col md={4}>
-            <Form.Label>Start Date</Form.Label>
+            {/* START DATE */}
+            <Col md={4}>
+              <Form.Label htmlFor="startDateInput">Start Date</Form.Label>
 
-            <div className="d-flex align-items-center" style={{ gap: "8px" }}>
+              <div className="d-flex align-items-center" style={{ gap: "8px" }}>
                 <i
-                    className="bi bi-calendar-event"
-                    style={{ fontSize: "1.4rem", color: "#c5050c", cursor: "pointer" }}
-                    onClick={() => document.getElementById("startDateInput").showPicker()}
+                  className="bi bi-calendar-event"
+                  role="button"
+                  tabIndex="0"
+                  aria-label="Open start date picker"
+                  onClick={() =>
+                    document.getElementById("startDateInput").showPicker()
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      document.getElementById("startDateInput").showPicker();
+                    }
+                  }}
+                  style={{
+                    fontSize: "1.4rem",
+                    color: "#c5050c",
+                    cursor: "pointer"
+                  }}
                 ></i>
 
                 <Form.Control
-                    id="startDateInput"
-                    type="date"
-                    value={leg.startDate || ""}
-                    onChange={(e) =>
+                  id="startDateInput"
+                  type="date"
+                  value={leg.startDate || ""}
+                  aria-describedby="startDateHelp"
+                  onChange={(e) =>
                     updateLeg({ ...leg, startDate: e.target.value })
-                    }
+                  }
                 />
-            </div>
-
+              </div>
             </Col>
 
-
+            {/* END DATE */}
             <Col md={4}>
-                <Form.Label>End Date</Form.Label>
+              <Form.Label htmlFor="endDateInput">End Date</Form.Label>
 
-                <div className="d-flex align-items-center" style={{ gap: "8px" }}>
-                    <i
-                    className="bi bi-calendar-event"
-                    style={{ fontSize: "1.4rem", color: "#c5050c", cursor: "pointer" }}
-                    onClick={() => document.getElementById("endDateInput").showPicker?.()}
-                    ></i>
-
-                    <Form.Control
-                    id="endDateInput"
-                    type="date"
-                    value={leg.endDate || ""}
-                    onChange={(e) =>
-                        updateLeg({ ...leg, endDate: e.target.value })
+              <div className="d-flex align-items-center" style={{ gap: "8px" }}>
+                <i
+                  className="bi bi-calendar-event"
+                  role="button"
+                  tabIndex="0"
+                  aria-label="Open end date picker"
+                  onClick={() =>
+                    document.getElementById("endDateInput").showPicker?.()
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      document.getElementById("endDateInput").showPicker?.();
                     }
-                    />
-                </div>
-            </Col>
+                  }}
+                  style={{
+                    fontSize: "1.4rem",
+                    color: "#c5050c",
+                    cursor: "pointer"
+                  }}
+                ></i>
 
+                <Form.Control
+                  id="endDateInput"
+                  type="date"
+                  value={leg.endDate || ""}
+                  aria-describedby="endDateHelp"
+                  onChange={(e) =>
+                    updateLeg({ ...leg, endDate: e.target.value })
+                  }
+                />
+              </div>
+            </Col>
           </Row>
         </Card.Body>
       </Card>
 
       <Row>
-        {/* AVAILABLE ACTIVITIES */}
+        {/* --------------------- AVAILABLE ACTIVITIES ---------------------- */}
         <Col md={4}>
           <Card className="shadow-sm mb-4">
             <Card.Body>
-              <h4>Available Activities</h4>
+              <h2>Available Activities</h2>
 
-              {(leg.activities || []).map((act, i) => {
-                const recMin = parseTime(act.end) - parseTime(act.start);
-                const duration = Math.min(Math.max(recMin, 30), 480);
+              <div role="list">
+                {(leg.activities || []).map((act, i) => {
+                  const recMin = parseTime(act.end) - parseTime(act.start);
+                  const duration = Math.min(Math.max(recMin, 30), 480);
 
-                return (
-                    <Card key={i} className="mb-3">
-                        <Card.Body>
-                        <Card.Title className="d-flex justify-content-between align-items-center">
-                            {act.title}
+                  return (
+                    <Card key={i} className="mb-3" role="listitem">
+                      <Card.Body>
+                        <Card.Title as="h3">
+                          <span>{act.title}</span>
 
-                            {/* SHOW DELETE ONLY FOR CUSTOM ACTIVITIES */}
-                            {act.isCustom && (
-                                <button
-                                className="btn btn-sm btn-outline-danger"
-                                onClick={() => {
-                                    if (window.confirm(`Delete custom activity "${act.title}"?`)) {
-                                    deleteCustomActivity(act.title);
-                                    }
-                                }}
-                                >
-                                X
-                                </button>
-                            )}
+                          {act.isCustom && (
+                            <Button
+                              variant="outline-danger"
+                              size="sm"
+                              aria-label={`Delete custom activity "${act.title}"`}
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `Delete custom activity "${act.title}"?`
+                                  )
+                                ) {
+                                  deleteCustomActivity(act.title);
+                                }
+                              }}
+                            >
+                              ×
+                            </Button>
+                          )}
                         </Card.Title>
-                    
+
                         <Card.Subtitle className="mb-2 text-muted">
-                            ({Math.round((duration / 60) * 10) / 10} hours recommended)
+                          ({Math.round((duration / 60) * 10) / 10} hours
+                          recommended)
                         </Card.Subtitle>
-                    
+
                         <Card.Text>{act.description}</Card.Text>
-                    
-                        <Form.Label>Assign Date</Form.Label>
+
+                        <Form.Label htmlFor={`assign-${i}`}>
+                          Assign Date
+                        </Form.Label>
+
                         <Form.Select
-                            onChange={(e) => {
+                          id={`assign-${i}`}
+                          aria-label={`Assign ${act.title} to date`}
+                          onChange={(e) => {
                             const selected = e.target.value;
                             if (!selected) return;
-                    
-                            const start = findEarliestStart(selected, duration);
-                    
+
+                            const start = findEarliestStart(
+                              selected,
+                              duration
+                            );
+
                             const newAct = {
-                                title: act.title,
-                                description: act.description,
-                                start,
-                                duration,
-                                date: selected,
+                              title: act.title,
+                              description: act.description,
+                              start,
+                              duration,
+                              date: selected
                             };
-                    
+
                             saveSchedule([...schedule, newAct]);
-                            }}
+                          }}
                         >
-                            <option value="">Select Date</option>
-                            {allDates.map((d) => {
+                          <option value="">Select Date</option>
+                          {allDates.map((d) => {
                             const iso = toISODate(d);
                             return (
-                                <option key={iso} value={iso}>
+                              <option key={iso} value={iso}>
                                 {iso}
-                                </option>
+                              </option>
                             );
-                            })}
+                          })}
                         </Form.Select>
-                        </Card.Body>
+                      </Card.Body>
                     </Card>
-                  
-                );
-              })}
-              <Button 
-                variant="success"
-                className="mb-3"
-                onClick={() => setShowAddModal(true)}
-                >
-                ➕ Add Custom Activity
-                </Button>
+                  );
+                })}
+              </div>
 
+              <Button
+                variant="success"
+                className="mt-2"
+                aria-label="Add a custom activity"
+                onClick={() => setShowAddModal(true)}
+              >
+                ➕ Add Custom Activity
+              </Button>
             </Card.Body>
           </Card>
         </Col>
 
-        {/* WEEKLY CALENDAR */}
+        {/* --------------------- WEEKLY CALENDAR ---------------------- */}
         <Col md={8}>
           <Card className="shadow-sm p-3">
-            <h4 className="mb-3">Weekly Calendar</h4>
+            <h2>Weekly Calendar</h2>
 
             {/* Pagination */}
-            <div className="d-flex justify-content-between mb-3">
+            <div
+              className="d-flex justify-content-between mb-3"
+              aria-label="Week navigation"
+            >
               <Button
                 variant="outline-secondary"
                 disabled={currentWeekIndex === 0}
+                aria-label="View previous week"
                 onClick={() => setCurrentWeekIndex(currentWeekIndex - 1)}
               >
                 ← Previous Week
               </Button>
 
-              <strong>Week {currentWeekIndex + 1}</strong>
+              <strong aria-live="polite">
+                Week {currentWeekIndex + 1}
+              </strong>
 
               <Button
                 variant="outline-secondary"
                 disabled={currentWeekIndex === weeks.length - 1}
+                aria-label="View next week"
                 onClick={() => setCurrentWeekIndex(currentWeekIndex + 1)}
               >
                 Next Week →
               </Button>
             </div>
 
-            {/* GRID */}
+            {/* Calendar Grid */}
             <div
+              role="grid"
+              aria-label="Weekly schedule grid"
               style={{
                 display: "grid",
                 gridTemplateColumns: "80px repeat(7, 1fr)",
-                gap: 4,
+                gap: 4
               }}
             >
-              {/* HOURS */}
-              <div>
+              {/* Hour labels */}
+              <div role="rowgroup">
                 {HOURS.map((h) => (
                   <div
                     key={h}
+                    role="rowheader"
                     style={{
                       height: hourHeight,
-                      borderBottom: "1px solid #ddd",
+                      borderBottom: "1px solid #ddd"
                     }}
                   >
                     {String(h).padStart(2, "0")}:00
@@ -479,7 +521,7 @@ export default function TripLeg() {
                 ))}
               </div>
 
-              {/* DAYS */}
+              {/* Day columns */}
               {currentWeek.map((date, idx) => {
                 const iso = date ? toISODate(date) : null;
                 const dayActs = iso ? actsByDate[iso] || [] : [];
@@ -487,11 +529,21 @@ export default function TripLeg() {
                 return (
                   <div
                     key={idx}
+                    role="gridcell"
+                    aria-label={
+                      date
+                        ? date.toLocaleDateString("en-US", {
+                            weekday: "long",
+                            month: "long",
+                            day: "numeric"
+                          })
+                        : "Empty day"
+                    }
                     style={{
                       position: "relative",
                       borderLeft: "1px solid #ccc",
                       borderRight: "1px solid #ccc",
-                      minHeight: HOURS.length * hourHeight,
+                      minHeight: HOURS.length * hourHeight
                     }}
                   >
                     <div className="text-center fw-bold mb-2">
@@ -499,7 +551,7 @@ export default function TripLeg() {
                         ? date.toLocaleDateString("en-US", {
                             weekday: "short",
                             month: "short",
-                            day: "numeric",
+                            day: "numeric"
                           })
                         : "-"}
                     </div>
@@ -510,14 +562,15 @@ export default function TripLeg() {
                         key={h}
                         style={{
                           height: hourHeight,
-                          borderBottom: "1px solid #eee",
+                          borderBottom: "1px solid #eee"
                         }}
-                      ></div>
+                      />
                     ))}
 
                     {/* Activities */}
                     {dayActs.map((activity) => {
                       const index = schedule.indexOf(activity);
+
                       return (
                         <ActivityBlock
                           key={`${activity.title}-${activity.start}-${activity.date}`}
@@ -541,12 +594,12 @@ export default function TripLeg() {
           </Card>
         </Col>
       </Row>
+
       <AddCustomActivityModal
         show={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSave={handleSaveCustomActivity}
-        />
-
+      />
     </Container>
   );
 }

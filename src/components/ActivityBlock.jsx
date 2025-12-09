@@ -10,6 +10,7 @@ export default function ActivityBlock({
 }) {
   const blockRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [keyboardGrab, setKeyboardGrab] = useState(false);
 
   // -----------------------------
   // TIME HELPERS
@@ -18,35 +19,32 @@ export default function ActivityBlock({
     const [h, m] = t.split(":").map(Number);
     return h * 60 + m;
   };
-// Check if a date is within allowed range
-  const isDateWithinRange = (dateISO, startDate, endDate) => {
-    return dateISO >= startDate && dateISO <= endDate;
-  };
-  
+
   const minutesToTime = (total) => {
     const h = Math.floor(total / 60);
     const m = total % 60;
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   };
 
-  const SCHEDULE_START_MINUTES = 6 * 60; // Your calendar begins at 06:00
+  const isDateWithinRange = (dateISO, startDate, endDate) =>
+    dateISO >= startDate && dateISO <= endDate;
+
+  const SCHEDULE_START_MINUTES = 6 * 60;
 
   // -----------------------------
-  // POSITIONING HELPERS
+  // POSITIONING
   // -----------------------------
   const getTopPx = () => {
     const minutesFromStart = parseTime(activity.start) - SCHEDULE_START_MINUTES;
     return (minutesFromStart / 60) * hourHeight;
   };
 
-  const getHeightPx = () => {
-    return (activity.duration / 60) * hourHeight;
-  };
+  const getHeightPx = () => (activity.duration / 60) * hourHeight;
 
   const snap = (min) => Math.round(min / snapMinutes) * snapMinutes;
 
   // -----------------------------
-  // DRAG HANDLER (Start time only)
+  // MOUSE DRAG HANDLER
   // -----------------------------
   const onMouseDownDrag = (e) => {
     e.preventDefault();
@@ -58,20 +56,19 @@ export default function ActivityBlock({
 
     const onMove = (ev) => {
       const deltaY = ev.clientY - startY;
-
-      // translate px → minutes
       const minutesMoved = (deltaY / hourHeight) * 60;
       const previewStart = initialStart + minutesMoved;
+
       if (previewStart < SCHEDULE_START_MINUTES) return;
 
-      // visual feedback
       if (blockRef.current) {
         blockRef.current.style.transform = `translateY(${deltaY}px)`;
         blockRef.current.style.opacity = 0.9;
       }
 
-      // detect day shift
-      const colRect = blockRef.current.parentElement.getBoundingClientRect();
+      // detect left / right day shift
+      const colRect =
+        blockRef.current?.parentElement?.getBoundingClientRect();
       const relativeX = ev.clientX - colRect.left;
       const fraction = relativeX / colRect.width;
 
@@ -83,27 +80,22 @@ export default function ActivityBlock({
       if (dayShift !== 0 && columnDate) {
         const d = new Date(columnDate);
         d.setDate(d.getDate() + dayShift);
-        const proposedDate = d.toLocaleDateString("en-CA");
-      
-        // ❗ Only allow a shift if it is inside trip range
+        const proposed = d.toLocaleDateString("en-CA");
+
         if (
           isDateWithinRange(
-            proposedDate,
-            activity.tripStartDate,   // we will inject these
+            proposed,
+            activity.tripStartDate,
             activity.tripEndDate
           )
         ) {
-          newDate = proposedDate;
-        } else {
-          // ❌ Out of range → ignore sideways drag
-          newDate = initialDateISO;
+          newDate = proposed;
         }
       }
-      
 
       activity.__preview = {
-        newStartMinutes: previewStart,
-        newDate
+        newDate,
+        newStartMinutes: previewStart
       };
     };
 
@@ -117,7 +109,6 @@ export default function ActivityBlock({
 
       if (activity.__preview) {
         let snappedStart = snap(activity.__preview.newStartMinutes);
-
         if (snappedStart < SCHEDULE_START_MINUTES) {
           snappedStart = SCHEDULE_START_MINUTES;
         }
@@ -140,27 +131,73 @@ export default function ActivityBlock({
   };
 
   // -----------------------------
+  // KEYBOARD ACCESSIBILITY
+  // -----------------------------
+  const handleKeyDown = (e) => {
+    const startMin = parseTime(activity.start);
+    const newDateObj = new Date(columnDate);
+
+    // SPACE / ENTER toggles "grab" mode
+    // Only toggle grab mode if focus is on the block itself, not on a child button
+    if (e.key === " " || (e.key === "Enter" && e.target === blockRef.current)) {
+      e.preventDefault();
+      setKeyboardGrab(!keyboardGrab);
+      return;
+    }
+
+
+    // Only allow arrow key control if "grabbed"
+    if (!keyboardGrab) return;
+
+    // Move up/down by snap interval
+    if (e.key === "ArrowUp") {
+      const newStart = Math.max(
+        SCHEDULE_START_MINUTES,
+        startMin - snapMinutes
+      );
+      onUpdate({ ...activity, start: minutesToTime(newStart) });
+    }
+
+    if (e.key === "ArrowDown") {
+      const newStart = startMin + snapMinutes;
+      onUpdate({ ...activity, start: minutesToTime(newStart) });
+    }
+
+    // Move left/right by one day (if allowed)
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      const shift = e.key === "ArrowRight" ? 1 : -1;
+
+      const d = new Date(columnDate);
+      d.setDate(d.getDate() + shift);
+      const newISO = d.toLocaleDateString("en-CA");
+
+      if (
+        isDateWithinRange(
+          newISO,
+          activity.tripStartDate,
+          activity.tripEndDate
+        )
+      ) {
+        onUpdate({ ...activity, date: newISO });
+      }
+    }
+  };
+
+  // -----------------------------
   // RENDER UI
   // -----------------------------
   const computedEnd = minutesToTime(
     parseTime(activity.start) + activity.duration
   );
 
-  const buttonStyle = {
-    flex: 1,
-    fontSize: "0.65rem",
-    padding: "2px 3px",
-    borderRadius: 4,
-    border: "none",
-    cursor: "pointer",
-    background: "rgba(255,255,255,0.2)",
-    color: "white",
-    whiteSpace: "nowrap"
-  };
-
   return (
     <div
       ref={blockRef}
+      role="button"
+      tabIndex={0}
+      aria-grabbed={keyboardGrab || isDragging}
+      aria-label={`${activity.title}. Scheduled from ${activity.start} to ${computedEnd}. Duration ${activity.duration} minutes.`}
+      onKeyDown={handleKeyDown}
       onMouseDown={onMouseDownDrag}
       style={{
         position: "absolute",
@@ -168,23 +205,21 @@ export default function ActivityBlock({
         height: getHeightPx(),
         left: "5%",
         right: "5%",
-        background: isDragging ? "#2b6cb0" : "#4a90e2",
+        background: isDragging || keyboardGrab ? "#245B92" : "#1E4A7A", // WCAG AA safe
         color: "white",
         borderRadius: 6,
         padding: 6,
         cursor: "grab",
         userSelect: "none",
-
-        // 🧠 MAIN FIXES FOR TEXT + BUTTONS SHRINKING
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-
+        outline: keyboardGrab ? "3px solid #FFD700" : "none",
         boxShadow: "0 2px 4px rgba(0,0,0,0.3)"
       }}
     >
-      {/* TOP CONTENT — shrinks gracefully */}
+      {/* TITLE & TIME */}
       <div style={{ flex: 1, overflow: "hidden" }}>
         <strong style={{ fontSize: "0.75rem", lineHeight: 1 }}>
           {activity.title}
@@ -194,14 +229,15 @@ export default function ActivityBlock({
         </div>
       </div>
 
-      {/* DELETE BUTTON */}
+      {/* DELETE BUTTON (accessible name) */}
       <button
+        aria-label={`Delete activity ${activity.title}`}
         onClick={(e) => {
           e.stopPropagation();
           onRemove();
         }}
         style={{
-          background: "rgba(220,0,0,0.85)",
+          background: "#B00020", // WCAG AA red
           border: "none",
           color: "white",
           fontSize: "0.7rem",
@@ -216,32 +252,54 @@ export default function ActivityBlock({
         ✕
       </button>
 
-      {/* BOTTOM: duration controls (never float away / never disappear) */}
+      {/* DURATION ADJUSTERS */}
       <div
         style={{
           display: "flex",
           gap: 4,
           marginTop: 4,
-          flexShrink: 0 // prevents buttons from collapsing
+          flexShrink: 0
         }}
       >
         <button
-          style={buttonStyle}
+          aria-label={`Increase duration of ${activity.title} by 30 minutes`}
           onClick={(e) => {
             e.stopPropagation();
             const newDur = Math.min(activity.duration + 30, 480);
             onUpdate({ ...activity, duration: newDur });
+          }}
+          style={{
+            flex: 1,
+            fontSize: "0.65rem",
+            padding: "2px 3px",
+            borderRadius: 4,
+            border: "none",
+            cursor: "pointer",
+            background: "rgba(255,255,255,0.2)",
+            color: "white",
+            whiteSpace: "nowrap"
           }}
         >
           +30m
         </button>
 
         <button
-          style={buttonStyle}
+          aria-label={`Decrease duration of ${activity.title} by 30 minutes`}
           onClick={(e) => {
             e.stopPropagation();
             const newDur = Math.max(activity.duration - 30, 30);
             onUpdate({ ...activity, duration: newDur });
+          }}
+          style={{
+            flex: 1,
+            fontSize: "0.65rem",
+            padding: "2px 3px",
+            borderRadius: 4,
+            border: "none",
+            cursor: "pointer",
+            background: "rgba(255,255,255,0.2)",
+            color: "white",
+            whiteSpace: "nowrap"
           }}
         >
           -30m
