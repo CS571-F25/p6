@@ -89,7 +89,14 @@ export default function TripLeg() {
     }
     return arr;
   };
-
+  const clampISODate = (iso) => {
+    if (!iso) return "";
+  
+    const [y, m, d] = iso.split("-").map(Number);
+    const clampedY = Math.min(Math.max(y, 1000), 9999); // keep JS-safe ranges
+  
+    return `${clampedY.toString().padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  };
   // =====================================================
   // GROUP DATES INTO WEEKS
   // =====================================================
@@ -124,7 +131,8 @@ export default function TripLeg() {
   // =====================================================
   const updateLeg = (updated) => {
     const corrected = { ...updated };
-
+    if (corrected.startDate) corrected.startDate = clampISODate(corrected.startDate);
+    if (corrected.endDate) corrected.endDate = clampISODate(corrected.endDate);
     // Prevent reversed dates
     if (corrected.startDate && corrected.endDate) {
       if (corrected.startDate > corrected.endDate)
@@ -313,6 +321,8 @@ export default function TripLeg() {
                 <Form.Control
                   id="startDateInput"
                   type="date"
+                  min="1000-01-01"
+                  max="9999-12-31"
                   value={leg.startDate || ""}
                   aria-describedby="startDateHelp"
                   onChange={(e) =>
@@ -350,6 +360,8 @@ export default function TripLeg() {
                 <Form.Control
                   id="endDateInput"
                   type="date"
+                  min="1000-01-01"
+                  max="9999-12-31"
                   value={leg.endDate || ""}
                   aria-describedby="endDateHelp"
                   onChange={(e) =>
@@ -384,6 +396,7 @@ export default function TripLeg() {
                             <Button
                               variant="outline-danger"
                               size="sm"
+                              style={{ marginLeft: "20px" }} // extra spacing if needed
                               aria-label={`Delete custom activity "${act.title}"`}
                               onClick={() => {
                                 if (
