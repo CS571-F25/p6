@@ -16,7 +16,7 @@
       { "title": "Walk through Montmartre & Sacré-Cœur", "description": "Stroll the artistic streets and enjoy sweeping views of Paris.", "start": "16:00", "end": "18:00" }
     ],
     "image": "images/Paris.jpg",
-    "altText": "View of Paris including the Eiffel Tower and surrounding cityscape."
+    "altText": "Panoramic view of Paris with the Eiffel Tower rising above the city’s rooftops under a cloudy sky."
   },
 
   {
@@ -36,7 +36,7 @@
       { "title": "Explore Hollywood Boulevard", "description": "See the Walk of Fame, street performers, and historic theaters.", "start": "17:00", "end": "18:30" }
     ],
     "image": "images/LosAngeles.jpg",
-    "altText": "Skyline view of Los Angeles with palm trees and downtown buildings."
+    "altText": "Aerial sunset view of downtown Los Angeles with skyscrapers surrounded by sprawling city lights."
   },
 
   {
@@ -56,7 +56,7 @@
       { "title": "Visit the Metropolitan Museum of Art", "description": "Explore one of the world’s greatest art collections.", "start": "13:00", "end": "16:00" }
     ],
     "image": "images/NewYork.jpg",
-    "altText": "New York City skyline featuring skyscrapers and Central Park."
+    "altText": "Street-level view of tall New York City buildings with cars and pedestrians lining the urban street."
   },
 
   {
@@ -76,7 +76,7 @@
       { "title": "Visit the Acropolis Museum", "description": "See artifacts that complement the ancient site.", "start": "15:00", "end": "17:00" }
     ],
     "image": "images/athens.jpg",
-    "altText": "View of the Acropolis and Parthenon overlooking Athens."
+    "altText": "Hillside view of Athens with white buildings and ancient ruins overlooking the modern city."
   },
 
   {
@@ -96,7 +96,7 @@
       { "title": "Relax at Barceloneta Beach", "description": "A lively beachfront great for sunbathing.", "start": "16:00", "end": "18:00" }
     ],
     "image": "images/barcelona.jpg",
-    "altText": "Barcelona skyline with Sagrada Família and Mediterranean coastline."
+    "altText": "Back view of a traveler raising their arms while overlooking the city of Barcelona at sunrise."
   },
 
   {
@@ -116,7 +116,7 @@
       { "title": "Walk the Great Wall (Mutianyu)", "description": "A scenic and less crowded section.", "start": "15:00", "end": "18:00" }
     ],
     "image": "images/beijing.jpg",
-    "altText": "View of the Great Wall of China winding through mountains."
+    "altText": "Nighttime skyline of Beijing with illuminated skyscrapers, including the iconic CCTV Headquarters building."
   },
 
   {
@@ -136,7 +136,7 @@
       { "title": "Explore Camps Bay Beach", "description": "Relax on a scenic beach.", "start": "16:00", "end": "18:00" }
     ],
     "image": "images/capetown.jpg",
-    "altText": "Cape Town coastline with Table Mountain in the background."
+    "altText": "Waterfront view of Cape Town at dusk with Table Mountain in the background and colorful reflections on the harbor."
   },
 
   {
@@ -156,7 +156,7 @@
       { "title": "Explore Larco Museum", "description": "Pre-Columbian art and artifacts.", "start": "16:00", "end": "18:00" }
     ],
     "image": "images/lima.jpg",
-    "altText": "Lima coastline with cliffs overlooking the Pacific Ocean."
+    "altText": "Historic plaza in Lima featuring colonial architecture, palm trees, and a central fountain under a bright sky."
   },
 
   {
@@ -176,7 +176,7 @@
       { "title": "See Qutub Minar", "description": "A UNESCO site with the tallest brick minaret.", "start": "15:00", "end": "16:30" }
     ],
     "image": "images/newdelhi.jpg",
-    "altText": "Historic Red Fort complex in New Delhi."
+    "altText": "Busy market street in New Delhi with crowded buildings, vibrant signage, and people navigating narrow lanes."
   },
 
   {
@@ -196,7 +196,7 @@
       { "title": "Explore Darling Harbour", "description": "Dining, museums, and waterfront views.", "start": "17:00", "end": "19:00" }
     ],
     "image": "images/sydney.jpg",
-    "altText": "Sydney Opera House and Harbour Bridge overlooking the water."
+    "altText": "Sydney Opera House and Harbour Bridge at sunset overlooking the harbor waters."
   },
 
   {
@@ -216,6 +216,6 @@
       { "title": "Wander Shinjuku at Night", "description": "Neon lights and nightlife.", "start": "19:00", "end": "21:00" }
     ],
     "image": "images/tokyo.jpg",
-    "altText": "Tokyo cityscape with neon lights and crowded streets."
+    "altText": "Tokyo cityscape at sunset with a traditional pagoda in the foreground and Mount Fuji in the distance."
   }
 ]

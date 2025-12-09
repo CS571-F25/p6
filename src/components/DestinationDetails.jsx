@@ -184,6 +184,8 @@ export default function DestinationDetails({ destinations }) {
                     borderRadius: "8px",
                     backgroundColor: "#ffffff",
                     outlineOffset: "3px",
+                    border: "1px solid #e5e5e5"
+
                   }}
                 >
                   <h3 className="h4">{act.title}</h3>
