@@ -216,7 +216,7 @@ export default function TripLeg() {
   // =====================================================
   const HOURS = Array.from({ length: 17 }, (_, i) => 6 + i);
   const hourHeight = 60;
-
+  
   const weeks = groupDatesIntoWeeks(allDates);
   const currentWeek = weeks[currentWeekIndex] || [];
 
@@ -494,6 +494,33 @@ export default function TripLeg() {
                 Next Week →
               </Button>
             </div>
+            {/* Header row ABOVE the calendar */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "80px repeat(7, 1fr)",
+                marginBottom: "4px"
+              }}
+            >
+              {/* Empty spacer above the hour labels */}
+              <div></div>
+
+              {currentWeek.map((date, idx) => (
+                <div
+                  key={idx}
+                  className="text-center fw-bold"
+                  style={{ fontSize: "0.9rem", padding: "4px 0" }}
+                >
+                  {date
+                    ? date.toLocaleDateString("en-US", {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric"
+                      })
+                    : "-"}
+                </div>
+              ))}
+            </div>
 
             {/* Calendar Grid */}
             <div
@@ -502,24 +529,57 @@ export default function TripLeg() {
               style={{
                 display: "grid",
                 gridTemplateColumns: "80px repeat(7, 1fr)",
-                gap: 4
+                gridTemplateRows: `repeat(${HOURS.length}, ${hourHeight}px)`,
+                gap: 4            
               }}
             >
-              {/* Hour labels */}
-              <div role="rowgroup">
+              {/* Hour labels (left column) */}
+              <div
+                className="calendar-hours"
+                style={{
+                  gridColumn: 1,
+                  position: "relative",
+                  "--hour-height": `${hourHeight}px`,
+                  minHeight: HOURS.length * hourHeight,
+
+                  /* Same repeating grid background as day columns */
+                  backgroundImage: `
+                    repeating-linear-gradient(
+                      to bottom,
+                      rgba(0,0,0,0.08) 0px,
+                      rgba(0,0,0,0.08) 1px,
+                      transparent 1px,
+                      transparent var(--hour-height)
+                    )
+                  `,
+                  backgroundSize: "100% calc(var(--hour-height) * 17)",
+                  backgroundRepeat: "no-repeat",
+                }}
+              >
+
+                {/* Hour labels */}
                 {HOURS.map((h) => (
                   <div
                     key={h}
-                    role="rowheader"
                     style={{
                       height: hourHeight,
-                      borderBottom: "1px solid #ddd"
+                      display: "flex",
+                      alignItems: "center",
+                      fontWeight: 500,
+                      fontSize: "0.9rem",
+                      paddingLeft: "4px",
+                      background: "white",
+                      position: "relative",
+                      zIndex: 3
                     }}
                   >
                     {String(h).padStart(2, "0")}:00
                   </div>
                 ))}
               </div>
+
+
+
 
               {/* Day columns */}
               {currentWeek.map((date, idx) => {
@@ -530,44 +590,28 @@ export default function TripLeg() {
                   <div
                     key={idx}
                     role="gridcell"
-                    aria-label={
-                      date
-                        ? date.toLocaleDateString("en-US", {
-                            weekday: "long",
-                            month: "long",
-                            day: "numeric"
-                          })
-                        : "Empty day"
-                    }
+                    className="calendar-day-column"
                     style={{
                       position: "relative",
                       borderLeft: "1px solid #ccc",
                       borderRight: "1px solid #ccc",
-                      minHeight: HOURS.length * hourHeight
+                      minHeight: HOURS.length * hourHeight,
+                      "--hour-height": `${hourHeight}px`,
+                      backgroundImage: `
+                        repeating-linear-gradient(
+                          to bottom,
+                          rgba(0,0,0,0.08) 0px,
+                          rgba(0,0,0,0.08) 1px,
+                          transparent 1px,
+                          transparent var(--hour-height)
+                        )
+                      `,
+                      backgroundSize: "100% calc(var(--hour-height) * 17)",
+                      backgroundRepeat: "no-repeat"
                     }}
                   >
-                    <div className="text-center fw-bold mb-2">
-                      {date
-                        ? date.toLocaleDateString("en-US", {
-                            weekday: "short",
-                            month: "short",
-                            day: "numeric"
-                          })
-                        : "-"}
-                    </div>
 
-                    {/* Hour grid */}
-                    {HOURS.map((h) => (
-                      <div
-                        key={h}
-                        style={{
-                          height: hourHeight,
-                          borderBottom: "1px solid #eee"
-                        }}
-                      />
-                    ))}
-
-                    {/* Activities */}
+                    {/* Activities (absolute-positioned inside this column) */}
                     {dayActs.map((activity) => {
                       const index = schedule.indexOf(activity);
 
@@ -588,7 +632,7 @@ export default function TripLeg() {
                       );
                     })}
                   </div>
-                );
+                )
               })}
             </div>
           </Card>

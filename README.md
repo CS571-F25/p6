@@ -25,12 +25,6 @@ The date pickers in the Trip Leg planner can behave inconsistently.
 
 Start/end date updates occasionally cause temporary visual glitches or misalignment.
 
-⚠️ Unlimited Downward Drag
-
-Activities in the timeline can be dragged downward past the intended schedule boundary.
-
-Lower vertical limits are not enforced.
-
 ⚠️ Schedule Lines Misaligned
 
 The visual hour grid does not always align perfectly with the calculated start times of activities.

@@ -12,9 +12,9 @@ export default function ActivityBlock({
   const [isDragging, setIsDragging] = useState(false);
   const [keyboardGrab, setKeyboardGrab] = useState(false);
 
-  // -----------------------------
+  // ======================================================
   // TIME HELPERS
-  // -----------------------------
+  // ======================================================
   const parseTime = (t) => {
     const [h, m] = t.split(":").map(Number);
     return h * 60 + m;
@@ -30,22 +30,27 @@ export default function ActivityBlock({
     dateISO >= startDate && dateISO <= endDate;
 
   const SCHEDULE_START_MINUTES = 6 * 60;
+  const SCHEDULE_END_MINUTES = 22 * 60;
 
-  // -----------------------------
+  // ======================================================
   // POSITIONING
-  // -----------------------------
+  // ======================================================
   const getTopPx = () => {
-    const minutesFromStart = parseTime(activity.start) - SCHEDULE_START_MINUTES;
-    return (minutesFromStart / 60) * hourHeight;
+    const startMin = parseTime(activity.start);
+    const px = ((startMin - SCHEDULE_START_MINUTES) / 60) * hourHeight;
+    return Math.round(px);   // ⬅ Pixel snap
   };
-
-  const getHeightPx = () => (activity.duration / 60) * hourHeight;
+  
+  const getHeightPx = () => {
+    const px = (activity.duration / 60) * hourHeight;
+    return Math.round(px);   // ⬅ Pixel snap
+  };
 
   const snap = (min) => Math.round(min / snapMinutes) * snapMinutes;
 
-  // -----------------------------
+  // ======================================================
   // MOUSE DRAG HANDLER
-  // -----------------------------
+  // ======================================================
   const onMouseDownDrag = (e) => {
     e.preventDefault();
     setIsDragging(true);
@@ -57,45 +62,45 @@ export default function ActivityBlock({
     const onMove = (ev) => {
       const deltaY = ev.clientY - startY;
       const minutesMoved = (deltaY / hourHeight) * 60;
-      const previewStart = initialStart + minutesMoved;
+      let previewStart = initialStart + minutesMoved;
 
-      if (previewStart < SCHEDULE_START_MINUTES) return;
+      // Clamp movement
+      const latestStart = SCHEDULE_END_MINUTES - activity.duration;
 
+      if (previewStart < SCHEDULE_START_MINUTES) previewStart = SCHEDULE_START_MINUTES;
+      if (previewStart > latestStart) previewStart = latestStart;
+
+      // Visual preview
       if (blockRef.current) {
-        blockRef.current.style.transform = `translateY(${deltaY}px)`;
+        blockRef.current.style.transform = `translateY(${
+          Math.round(((previewStart - initialStart) / 60) * hourHeight)
+        }px)`;        
         blockRef.current.style.opacity = 0.9;
       }
 
-      // detect left / right day shift
-      const colRect =
-        blockRef.current?.parentElement?.getBoundingClientRect();
+      // Detect day shift
+      const colRect = blockRef.current?.parentElement?.getBoundingClientRect();
       const relativeX = ev.clientX - colRect.left;
-      const fraction = relativeX / colRect.width;
-
       let dayShift = 0;
-      if (fraction > 0.75) dayShift = 1;
-      else if (fraction < 0.25) dayShift = -1;
+
+      if (relativeX / colRect.width > 0.75) dayShift = 1;
+      else if (relativeX / colRect.width < 0.25) dayShift = -1;
 
       let newDate = initialDateISO;
-      if (dayShift !== 0 && columnDate) {
+
+      if (dayShift !== 0) {
         const d = new Date(columnDate);
         d.setDate(d.getDate() + dayShift);
-        const proposed = d.toLocaleDateString("en-CA");
+        const iso = d.toLocaleDateString("en-CA");
 
-        if (
-          isDateWithinRange(
-            proposed,
-            activity.tripStartDate,
-            activity.tripEndDate
-          )
-        ) {
-          newDate = proposed;
+        if (isDateWithinRange(iso, activity.tripStartDate, activity.tripEndDate)) {
+          newDate = iso;
         }
       }
 
       activity.__preview = {
-        newDate,
-        newStartMinutes: previewStart
+        newStartMinutes: previewStart,
+        newDate
       };
     };
 
@@ -108,20 +113,21 @@ export default function ActivityBlock({
       }
 
       if (activity.__preview) {
-        let snappedStart = snap(activity.__preview.newStartMinutes);
-        if (snappedStart < SCHEDULE_START_MINUTES) {
-          snappedStart = SCHEDULE_START_MINUTES;
-        }
+        let newStart = snap(activity.__preview.newStartMinutes);
+
+        // Final clamp
+        const latest = SCHEDULE_END_MINUTES - activity.duration;
+        if (newStart < SCHEDULE_START_MINUTES) newStart = SCHEDULE_START_MINUTES;
+        if (newStart > latest) newStart = latest;
 
         onUpdate({
           ...activity,
-          start: minutesToTime(snappedStart),
+          start: minutesToTime(newStart),
           date: activity.__preview.newDate
         });
-
-        delete activity.__preview;
       }
 
+      delete activity.__preview;
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
@@ -130,72 +136,61 @@ export default function ActivityBlock({
     window.addEventListener("mouseup", onUp);
   };
 
-  // -----------------------------
+  // ======================================================
   // KEYBOARD ACCESSIBILITY
-  // -----------------------------
+  // ======================================================
   const handleKeyDown = (e) => {
     const startMin = parseTime(activity.start);
-    const newDateObj = new Date(columnDate);
 
-    // SPACE / ENTER toggles "grab" mode
-    // Only toggle grab mode if focus is on the block itself, not on a child button
+    // Toggle grab mode
     if (e.key === " " || (e.key === "Enter" && e.target === blockRef.current)) {
       e.preventDefault();
-      setKeyboardGrab(!keyboardGrab);
+      setKeyboardGrab((prev) => !prev);
       return;
     }
 
-
-    // Only allow arrow key control if "grabbed"
     if (!keyboardGrab) return;
 
-    // Move up/down by snap interval
+    // Move up
     if (e.key === "ArrowUp") {
-      const newStart = Math.max(
-        SCHEDULE_START_MINUTES,
-        startMin - snapMinutes
-      );
+      const newStart = Math.max(SCHEDULE_START_MINUTES, startMin - snapMinutes);
       onUpdate({ ...activity, start: minutesToTime(newStart) });
     }
 
+    // Move down (clamped)
     if (e.key === "ArrowDown") {
-      const newStart = startMin + snapMinutes;
+      const latest = SCHEDULE_END_MINUTES - activity.duration;
+      const newStart = Math.min(latest, startMin + snapMinutes);
       onUpdate({ ...activity, start: minutesToTime(newStart) });
     }
 
-    // Move left/right by one day (if allowed)
+    // Move left/right days
     if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
       const shift = e.key === "ArrowRight" ? 1 : -1;
-
       const d = new Date(columnDate);
       d.setDate(d.getDate() + shift);
-      const newISO = d.toLocaleDateString("en-CA");
+      const iso = d.toLocaleDateString("en-CA");
 
-      if (
-        isDateWithinRange(
-          newISO,
-          activity.tripStartDate,
-          activity.tripEndDate
-        )
-      ) {
-        onUpdate({ ...activity, date: newISO });
+      if (isDateWithinRange(iso, activity.tripStartDate, activity.tripEndDate)) {
+        onUpdate({ ...activity, date: iso });
       }
     }
   };
 
-  // -----------------------------
-  // RENDER UI
-  // -----------------------------
-  const computedEnd = minutesToTime(
-    parseTime(activity.start) + activity.duration
-  );
+  // ======================================================
+  // CALCULATED END TIME
+  // ======================================================
+  const computedEnd = minutesToTime(parseTime(activity.start) + activity.duration);
 
+  // ======================================================
+  // RENDER
+  // ======================================================
   return (
     <div
       ref={blockRef}
       role="button"
       tabIndex={0}
-      aria-grabbed={keyboardGrab || isDragging}
+      aria-grabbed={isDragging || keyboardGrab}
       aria-label={`${activity.title}. Scheduled from ${activity.start} to ${computedEnd}. Duration ${activity.duration} minutes.`}
       onKeyDown={handleKeyDown}
       onMouseDown={onMouseDownDrag}
@@ -205,7 +200,7 @@ export default function ActivityBlock({
         height: getHeightPx(),
         left: "5%",
         right: "5%",
-        background: isDragging || keyboardGrab ? "#245B92" : "#1E4A7A", // WCAG AA safe
+        background: isDragging || keyboardGrab ? "#245B92" : "#1E4A7A",
         color: "white",
         borderRadius: 6,
         padding: 6,
@@ -229,7 +224,7 @@ export default function ActivityBlock({
         </div>
       </div>
 
-      {/* DELETE BUTTON (accessible name) */}
+      {/* DELETE BUTTON */}
       <button
         aria-label={`Delete activity ${activity.title}`}
         onClick={(e) => {
@@ -237,7 +232,7 @@ export default function ActivityBlock({
           onRemove();
         }}
         style={{
-          background: "#B00020", // WCAG AA red
+          background: "#B00020",
           border: "none",
           color: "white",
           fontSize: "0.7rem",
@@ -253,19 +248,18 @@ export default function ActivityBlock({
       </button>
 
       {/* DURATION ADJUSTERS */}
-      <div
-        style={{
-          display: "flex",
-          gap: 4,
-          marginTop: 4,
-          flexShrink: 0
-        }}
-      >
+      <div style={{ display: "flex", gap: 4, marginTop: 4, flexShrink: 0 }}>
         <button
           aria-label={`Increase duration of ${activity.title} by 30 minutes`}
           onClick={(e) => {
             e.stopPropagation();
-            const newDur = Math.min(activity.duration + 30, 480);
+
+            const startMin = parseTime(activity.start);
+            const proposed = activity.duration + 30;
+            const maxDur = SCHEDULE_END_MINUTES - startMin;
+
+            const newDur = Math.min(Math.min(proposed, maxDur), 480);
+
             onUpdate({ ...activity, duration: newDur });
           }}
           style={{
