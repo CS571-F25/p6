@@ -28,9 +28,9 @@ export default function Home() {
 
   // Orbit geometry
   const centerX = viewportWidth / 2;
-  const centerY = 60;
+  const centerY = 50;
   const radiusX = 300;
-  const radiusY = 30;
+  const radiusY = 20;
 
   const earthX = centerX + radiusX * Math.cos(angle);
   const earthY = centerY + radiusY * Math.sin(angle);
@@ -47,7 +47,7 @@ export default function Home() {
           width: "100%",
           height: "120px",
           pointerEvents: "none",
-          zIndex: 9999
+          zIndex: 1
         }}
       >
         <div
@@ -63,7 +63,7 @@ export default function Home() {
       </div>
 
       {/* MAIN CONTENT */}
-      <main role="main">
+      <main role="main" style={{ position: "relative", zIndex: 2000 }}>
         <Container className="mt-4">
 
           {/* INTRO SECTION */}
