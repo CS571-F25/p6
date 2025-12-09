@@ -256,17 +256,20 @@ export default function TripLeg() {
 
   const deleteCustomActivity = (title) => {
     const filtered = leg.activities.filter((a) => a.title !== title);
-
+  
+    const cleanedSchedule = schedule.filter((a) => a.title !== title);
+  
     const updatedLeg = {
       ...leg,
-      activities: filtered
+      activities: filtered,
+      plannedActivities: cleanedSchedule   // <-- IMPORTANT
     };
-
+  
+    // Update React state
     setLeg(updatedLeg);
-
-    const cleanedSchedule = schedule.filter((a) => a.title !== title);
-    saveSchedule(cleanedSchedule);
-
+    setSchedule(cleanedSchedule);
+  
+    // Save to localStorage correctly
     const stored = JSON.parse(localStorage.getItem("tripLegs")) || [];
     const updatedStorage = stored.map((l) =>
       l.name === leg.name ? updatedLeg : l
