@@ -14,53 +14,9 @@ export default function Home() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Orbit animation (decorative)
-  useEffect(() => {
-    let frame;
-    const animate = () => {
-      setAngle((prev) => (prev + 0.01) % (Math.PI * 2));
-      frame = requestAnimationFrame(animate);
-    };
-    frame = requestAnimationFrame(animate);
-
-    return () => cancelAnimationFrame(frame);
-  }, []);
-
-  // Orbit geometry
-  const centerX = viewportWidth / 2;
-  const centerY = 50;
-  const radiusX = 300;
-  const radiusY = 20;
-
-  const earthX = centerX + radiusX * Math.cos(angle);
-  const earthY = centerY + radiusY * Math.sin(angle);
 
   return (
     <>
-      {/* 🌍 Decorative Orbit Animation */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "120px",
-          pointerEvents: "none",
-          zIndex: 1
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            marginTop: "30px",
-            transform: `translate(${earthX}px, ${earthY}px)`,
-            fontSize: "2rem"
-          }}
-        >
-          🌍
-        </div>
-      </div>
 
       {/* MAIN CONTENT */}
       <main role="main">
