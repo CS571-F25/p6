@@ -162,7 +162,7 @@ export default function FinalSchedule() {
                 id={`day-heading-${date}`}
                 style={{ fontSize: "1.4rem" }}
               >
-                {new Date(date).toLocaleDateString("en-US", {
+                {new Date(date + "T00:00:00").toLocaleDateString("en-US", {
                   weekday: "long",
                   month: "short",
                   day: "numeric"

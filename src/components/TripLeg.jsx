@@ -305,7 +305,7 @@ export default function TripLeg() {
                   }}
                   style={{
                     fontSize: "1.4rem",
-                    color: "#c5050c",
+                    color: "#9a0404",
                     cursor: "pointer"
                   }}
                 ></i>
