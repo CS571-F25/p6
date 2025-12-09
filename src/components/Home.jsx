@@ -63,7 +63,7 @@ export default function Home() {
       </div>
 
       {/* MAIN CONTENT */}
-      <main role="main" style={{ position: "relative", zIndex: 2000 }}>
+      <main role="main">
         <Container className="mt-4">
 
           {/* INTRO SECTION */}
